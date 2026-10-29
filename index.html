@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bản Đồ Mind Map Hành Chính, Du Lịch & Điểm Ăn Chơi Việt Nam</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        #mindmap-container {
+            width: 100%;
+            height: 100%;
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+            background-size: 24px 24px;
+            cursor: grab;
+        }
+
+        #mindmap-container:active {
+            cursor: grabbing;
+        }
+
+        .node {
+            cursor: pointer;
+        }
+
+        .node circle.node-ring {
+            stroke-width: 2.5px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .node:hover circle.node-ring {
+            transform: scale(1.22);
+            filter: drop-shadow(0px 4px 10px rgba(234, 88, 12, 0.45));
+        }
+
+        .node text.title {
+            font-size: 13px;
+            font-weight: 700;
+            fill: #0f172a;
+            paint-order: stroke;
+            stroke: #ffffff;
+            stroke-width: 4.5px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .node text.subtitle {
+            font-size: 10.5px;
+            font-weight: 500;
+            fill: #475569;
+            paint-order: stroke;
+            stroke: #ffffff;
+            stroke-width: 3.5px;
+        }
+
+        .node text.tourism-tag {
+            font-size: 10.5px;
+            font-weight: 700;
+            fill: #b45309;
+            paint-order: stroke;
+            stroke: #ffffff;
+            stroke-width: 3.5px;
+        }
+
+        .link {
+            fill: none;
+            stroke: #cbd5e1;
+            stroke-width: 2px;
+            transition: stroke 0.25s ease, stroke-width 0.25s ease;
+        }
+
+        .link.central-city-link {
+            stroke: #f59e0b;
+            stroke-width: 2.4px;
+        }
+
+        .link.tourism-link {
+            stroke: #f59e0b;
+            stroke-dasharray: 5, 3;
+            stroke-width: 1.8px;
+        }
+
+        .link.nightlife-link {
+            stroke: #ec4899;
+            stroke-dasharray: 4, 3;
+            stroke-width: 1.8px;
+        }
+
+        .node-selected circle.node-ring {
+            stroke-width: 4px !important;
+            filter: drop-shadow(0px 0px 12px rgba(220, 38, 38, 0.8));
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        @keyframes pulse-soft {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+        .crown-badge {
+            animation: pulse-soft 2.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen text-slate-800">
+
+    <!-- Top Navigation & Control Header -->
+    <header class="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200 z-30 shrink-0 px-3 sm:px-5 py-2.5">
+        <div class="flex flex-wrap items-center justify-between gap-2.5">
+            <!-- Brand & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-orange-500 to-amber-500 flex items-center justify-center text-white font-black text-base shadow-md shrink-0">
+                    VN
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-sm sm:text-base md:text-lg font-extrabold text-slate-900 tracking-tight">
+                            Mind Map Hành Chính, Du Lịch, Cảng Biển & Điểm Ăn Chơi Việt Nam
+                        </h1>
+                        <span id="mode-badge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-xs">
+                            👑 8 TP Trực thuộc TW & 26 Tỉnh (2 Cấp)
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 hidden sm:block">
+                        Đã cập nhật <strong>TP. Bắc Ninh</strong> & <strong>TP. Quảng Ninh</strong> lên Thành phố trực thuộc TW • Tích hợp hình ảnh danh thắng, cảng biển, phố đêm & ẩm thực
+                    </p>
+                </div>
+            </div>
+
+            <!-- Controls: Mode Switcher, Search, Filter & Expand -->
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Mode Switcher -->
+                <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+                    <button id="btn-mode-34" onclick="switchMode('34')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-slate-900 shadow-xs">
+                        34 Tỉnh/TP (8 TP TW • 2 Cấp)
+                    </button>
+                    <button id="btn-mode-63" onclick="switchMode('63')" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-900">
+                        63 Tỉnh/TP (8 TP TW • 3 Cấp)
+                    </button>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="relative w-52 sm:w-64">
+                    <input id="search-input" type="text" placeholder="Tìm TP, phường, điểm ăn chơi, cảng..." 
+                        class="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all">
+                    <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <button id="clear-search" onclick="clearSearch()" class="hidden absolute right-2 top-2 text-slate-400 hover:text-slate-600">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    <!-- Search Results Dropdown -->
+                    <div id="search-results" class="hidden absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-96 overflow-y-auto z-50 divide-y divide-slate-100"></div>
+                </div>
+
+                <!-- Toggle Tourism & Entertainment Branches -->
+                <button id="btn-toggle-tourism" onclick="toggleTourismNodes()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition-all shadow-2xs">
+                    <span>🎉</span>
+                    <span id="tourism-btn-text">Nhánh Ăn Chơi & Ảnh: BẬT</span>
+                </button>
+
+                <!-- Tree Control Buttons -->
+                <div class="inline-flex rounded-xl border border-slate-200 bg-white shadow-2xs divide-x divide-slate-200">
+                    <button onclick="filterCentralCitiesOnly()" title="Mở nhanh 8 Thành phố trực thuộc Trung ương" class="px-2.5 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors">
+                        👑 8 TP Trung ương
+                    </button>
+                    <button onclick="expandToProvinces()" title="Mở toàn bộ danh sách Tỉnh/Thành" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+                        Mở tất cả Tỉnh/TP
+                    </button>
+                    <button onclick="collapseToRegions()" title="Thu gọn về cấp Vùng" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+                        Thu gọn
+                    </button>
+                    <button onclick="resetZoom()" title="Căn giữa sơ đồ" class="px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors">
+                        Căn giữa
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend & Status Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="font-bold text-slate-700">Chú giải:</span>
+                <span class="inline-flex items-center gap-1 font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-600 ring-2 ring-amber-400 inline-block"></span> 👑 TP. Trực thuộc TW (8 TP)
+                </span>
+                <span class="inline-flex items-center gap-1 font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span> Tỉnh (26 Tỉnh)
+                </span>
+                <span id="legend-district" class="hidden items-center gap-1">
+                    <span class="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block"></span> Cấp Quận/Huyện
+                </span>
+                <span class="inline-flex items-center gap-1">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"></span> Phường / Xã / Đặc khu
+                </span>
+                <span class="inline-flex items-center gap-1 font-semibold text-pink-700">
+                    <span class="w-2.5 h-2.5 rounded-full bg-pink-500 inline-block"></span> 🎉 Điểm ăn chơi & Nightlife
+                </span>
+                <span class="inline-flex items-center gap-1 font-semibold text-amber-700">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> ⚓ Danh thắng & Bến cảng
+                </span>
+                <span class="inline-flex items-center gap-1 font-semibold text-orange-700">
+                    <span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block"></span> 🍜 Ẩm thực đặc sản
+                </span>
+            </div>
+            <div id="stats-summary" class="text-slate-600 font-medium">
+                Tổng cộng: <strong class="text-red-600">8 TP trực thuộc TW</strong> (Hà Nội, Hải Phòng, Quảng Ninh, Bắc Ninh, Huế, Đà Nẵng, TP.HCM, Cần Thơ) & <strong class="text-emerald-700">26 Tỉnh</strong>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex relative overflow-hidden">
+        <!-- D3 Mindmap Canvas -->
+        <div id="mindmap-container" class="flex-1 relative"></div>
+
+        <!-- Floating Hover Preview Card (Shows Photo & Quick Info on Node Hover) -->
+        <div id="hover-preview-card" class="hidden fixed pointer-events-none z-50 w-72 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transition-opacity duration-150">
+            <div class="relative h-36 w-full bg-slate-900">
+                <img id="hover-card-img" src="" alt="Preview" class="w-full h-full object-cover" onerror="handleImgError(this)">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/20 to-transparent"></div>
+                <span id="hover-card-badge" class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white shadow"></span>
+                <span id="hover-card-rating" class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/60 text-amber-300 backdrop-blur-xs">★ 4.9</span>
+                <div class="absolute bottom-2 left-3 right-3 text-white">
+                    <div id="hover-card-title" class="text-sm font-extrabold leading-tight drop-shadow"></div>
+                    <div id="hover-card-sub" class="text-[11px] text-amber-200 font-medium truncate"></div>
+                </div>
+            </div>
+            <div class="p-3">
+                <p id="hover-card-desc" class="text-xs text-slate-600 line-clamp-3 leading-relaxed"></p>
+                <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] font-semibold text-blue-600">
+                    <span>👆 Click để mở nhánh & xem bộ sưu tập ảnh</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Quick Filter Bar (Bottom Left) -->
+        <div class="absolute bottom-3 left-3 z-20 flex flex-col gap-1.5 max-w-2xl pointer-events-auto">
+            <!-- Quick 8 Central Cities Bar -->
+            <div class="bg-white/95 backdrop-blur-md border border-amber-200 rounded-xl p-2 shadow-lg flex flex-wrap items-center gap-1">
+                <span class="text-[11px] font-extrabold text-red-700 px-1.5 flex items-center gap-1">👑 8 TP Trung ương:</span>
+                <div id="central-cities-quick-buttons" class="flex flex-wrap gap-1"></div>
+            </div>
+            <!-- Quick 6 Regions Bar -->
+            <div class="bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl p-2 shadow-lg flex flex-wrap items-center gap-1">
+                <span class="text-[11px] font-bold text-slate-600 px-1.5">🗺️ Chọn Vùng:</span>
+                <div id="region-quick-buttons" class="flex flex-wrap gap-1"></div>
+            </div>
+        </div>
+
+        <!-- Right Detail Inspector Panel (With Hero Image, Tabs, Entertainment, Ports & Food Cards) -->
+        <aside id="info-panel" class="w-80 sm:w-[430px] bg-white border-l border-slate-200 shadow-2xl z-20 flex flex-col transition-all duration-300">
+            <!-- Hero Image Banner Header -->
+            <div class="relative h-48 w-full bg-slate-900 shrink-0 overflow-hidden">
+                <img id="panel-hero-img" src="https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80" alt="Vietnam" class="w-full h-full object-cover transition-transform duration-700 hover:scale-105 cursor-pointer" onclick="openLightboxFromHero()" onerror="handleImgError(this)">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/45 to-black/20 pointer-events-none"></div>
+
+                <!-- Top Right Close & Zoom Buttons -->
+                <div class="absolute top-3 right-3 flex items-center gap-1.5">
+                    <button onclick="openLightboxFromHero()" class="bg-black/45 hover:bg-black/70 text-white p-1.5 rounded-lg backdrop-blur-xs transition-colors" title="Phóng to ảnh bìa">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                        </svg>
+                    </button>
+                    <button onclick="toggleInfoPanel(false)" class="bg-black/45 hover:bg-black/70 text-white p-1.5 rounded-lg backdrop-blur-xs transition-colors" title="Thu gọn bảng thông tin">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Hero Text Overlay -->
+                <div class="absolute bottom-3 left-4 right-4 text-white pointer-events-none">
+                    <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                        <span id="panel-badge" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-red-600 text-white shadow">
+                            Quốc gia
+                        </span>
+                        <span id="panel-port-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/90 text-white">
+                            ⚓ Đô thị Cảng & Du lịch
+                        </span>
+                    </div>
+                    <h2 id="panel-title" class="text-lg sm:text-xl font-black leading-tight drop-shadow">Cộng hòa Xã hội Chủ nghĩa Việt Nam</h2>
+                    <p id="panel-subtitle" class="text-xs text-amber-200 font-medium mt-0.5">8 Thành phố trực thuộc TW & 26 Tỉnh (Mô hình 2 cấp)</p>
+                </div>
+            </div>
+
+            <!-- Category Filter Tabs inside Sidebar -->
+            <div id="panel-tabs" class="flex items-center gap-1 px-3 py-2 bg-slate-100 border-b border-slate-200 overflow-x-auto shrink-0 text-[11px] font-bold">
+                <button onclick="setPanelTab('all')" id="tab-all" class="px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs shrink-0">
+                    Tất cả
+                </button>
+                <button onclick="setPanelTab('nightlife')" id="tab-nightlife" class="px-2.5 py-1 rounded-lg text-pink-700 hover:bg-white/60 shrink-0">
+                    🎉 Ăn chơi & Nightlife
+                </button>
+                <button onclick="setPanelTab('scenic')" id="tab-scenic" class="px-2.5 py-1 rounded-lg text-amber-800 hover:bg-white/60 shrink-0">
+                    ⚓ Danh thắng & Cảng
+                </button>
+                <button onclick="setPanelTab('food')" id="tab-food" class="px-2.5 py-1 rounded-lg text-orange-700 hover:bg-white/60 shrink-0">
+                    🍜 Ẩm thực
+                </button>
+                <button onclick="setPanelTab('admin')" id="tab-admin" class="px-2.5 py-1 rounded-lg text-blue-700 hover:bg-white/60 shrink-0">
+                    🏛️ Phường/Xã
+                </button>
+            </div>
+
+            <!-- Panel Body -->
+            <div id="panel-content" class="flex-1 overflow-y-auto p-3.5 space-y-4">
+                <!-- Dynamic Content Injected via JS -->
+            </div>
+        </aside>
+
+        <!-- Re-open Panel Floating Button -->
+        <button id="btn-open-panel" onclick="toggleInfoPanel(true)" class="hidden absolute top-4 right-4 z-20 bg-white border border-slate-200 shadow-xl rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center gap-1.5">
+            <span>📸 Mở bảng Ảnh & Điểm ăn chơi</span>
+        </button>
+    </div>
+
+    <!-- Fullscreen Photo Lightbox Modal -->
+    <div id="lightbox-modal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4" onclick="closeLightbox(event)">
+        <div class="relative max-w-3xl w-full bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700" onclick="event.stopPropagation()">
+            <button onclick="closeLightbox()" class="absolute top-3 right-3 z-10 bg-black/60 hover:bg-red-600 text-white p-2 rounded-full transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <div class="h-80 sm:h-[440px] w-full bg-black flex items-center justify-center overflow-hidden">
+                <img id="lightbox-img" src="" alt="Zoomed Photo" class="w-full h-full object-cover" onerror="handleImgError(this)">
+            </div>
+            <div class="p-4 sm:p-5 bg-slate-900 text-white">
+                <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                    <span id="lightbox-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-slate-950"></span>
+                    <span id="lightbox-location" class="text-xs text-slate-300 font-medium"></span>
+                </div>
+                <h3 id="lightbox-title" class="text-lg sm:text-xl font-black text-white"></h3>
+                <p id="lightbox-desc" class="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed"></p>
+                <div id="lightbox-tip" class="mt-3 p-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-xs text-amber-300 font-medium"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // 1. KHO ẢNH CHẤT LƯỢNG CAO THEO CHỦ ĐỀ (DANH THẮNG, BẾN CẢNG, NIGHTLIFE, ẨM THỰC)
+        // ============================================================================
+        const PHOTO_BANK = {
+            halong_port: "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80",
+            cruise_harbor: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=900&q=80",
+            container_port: "https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=900&q=80",
+            yacht_marina: "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=900&q=80",
+            hanoi_city: "https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?auto=format&fit=crop&w=900&q=80",
+            hanoi_night: "https://images.unsplash.com/photo-1555921015-5532091f6026?auto=format&fit=crop&w=900&q=80",
+            saigon_night: "https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=900&q=80",
+            danang_bridge: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80",
+            hoian_lantern: "https://images.unsplash.com/photo-1540611025311-01df3cef54b5?auto=format&fit=crop&w=900&q=80",
+            hue_citadel: "https://images.unsplash.com/photo-1583417267826-aebc4d1542e1?auto=format&fit=crop&w=900&q=80",
+            ninhbinh_river: "https://images.unsplash.com/photo-1563492065599-3520f775eeed?auto=format&fit=crop&w=900&q=80",
+            mountain_terrace: "https://images.unsplash.com/photo-1504457047772-27faf1c00561?auto=format&fit=crop&w=900&q=80",
+            waterfall: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80",
+            temple_ancient: "https://images.unsplash.com/photo-1513415564515-763d91423bdd?auto=format&fit=crop&w=900&q=80",
+            beach_resort: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80",
+            island_aerial: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80",
+            nightlife_street: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=80",
+            beach_club: "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=900&q=80",
+            theme_park: "https://images.unsplash.com/photo-1513889961551-628c1e5e2ee9?auto=format&fit=crop&w=900&q=80",
+            vn_food_pho: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=900&q=80",
+            seafood_feast: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80",
+            street_food: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80",
+            coffee_chill: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80",
+            mekong_floating: "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=900&q=80",
+            cave_adventure: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=900&q=80",
+            dalat_pine: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=900&q=80"
+        };
+
+        // Fallback SVG tạo tự động nếu mạng chặn Unsplash
+        function handleImgError(imgEl) {
+            const title = (imgEl.getAttribute('alt') || 'Việt Nam').substring(0, 28);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+                <defs>
+                    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#0f172a"/>
+                        <stop offset="50%" stop-color="#1e3a8a"/>
+                        <stop offset="100%" stop-color="#b45309"/>
+                    </linearGradient>
+                </defs>
+                <rect width="600" height="400" fill="url(#g)"/>
+                <circle cx="480" cy="90" r="45" fill="#fbbf24" opacity="0.8"/>
+                <path d="M0 320 Q150 240 300 310 T600 290 L600 400 L0 400 Z" fill="#1e293b" opacity="0.7"/>
+                <text x="300" y="200" text-anchor="middle" fill="#ffffff" font-family="Inter, sans-serif" font-size="22" font-weight="bold">${title}</text>
+                <text x="300" y="232" text-anchor="middle" fill="#fcd34d" font-family="Inter, sans-serif" font-size="14">Khám phá Du lịch - Cảng biển - Ăn chơi Việt Nam</text>
+            </svg>`;
+            imgEl.onerror = null;
+            imgEl.src = "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+        }
+
+        // ============================================================================
+        // 2. DỮ LIỆU ĐẦY ĐỦ 34 TỈNH/THÀNH PHỐ (8 TP TRỰC THUỘC TW & 26 TỈNH)
+        //    ĐÃ CẬP NHẬT TP. BẮC NINH & TP. QUẢNG NINH LÊN THÀNH PHỐ TRỰC THUỘC TW
+        // ============================================================================
+        const DATA_34_PROVINCES = [
+            {
+                region: "Đồng bằng sông Hồng",
+                code: "DBSH",
+                image: PHOTO_BANK.hanoi_city,
+                description: "Vùng lõi kinh tế - chính trị - văn hóa Bắc Bộ với 4 Thành phố trực thuộc Trung ương (Hà Nội, Hải Phòng, Quảng Ninh, Bắc Ninh) và 2 Tỉnh (Hưng Yên, Ninh Bình).",
+                provinces: [
+                    {
+                        name: "Thành phố Hà Nội",
+                        isCentralCity: true,
+                        type: "Thành phố trực thuộc TW (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới Thủ đô Hà Nội",
+                        adminCenter: "Phường Hoàn Kiếm & Phường Ba Đình",
+                        image: PHOTO_BANK.hanoi_city,
+                        overview: "Thủ đô ngàn năm văn hiến, trung tâm chính trị - hành chính quốc gia, nổi tiếng với 36 phố phường, di sản Hoàng thành và nhịp sống đêm sôi động bậc nhất.",
+                        units: [
+                            { name: "Phường Hoàn Kiếm", type: "Phường (Trung tâm)", image: PHOTO_BANK.hanoi_night, spots: ["Hồ Hoàn Kiếm & Đền Ngọc Sơn", "Phố bia Tạ Hiện - Lương Ngọc Quyến", "Phố đi bộ Hồ Gươm & Nhà hát Lớn", "Chợ đêm Phố Cổ Đồng Xuân"] },
+                            { name: "Phường Ba Đình", type: "Phường (Trung tâm)", image: PHOTO_BANK.hanoi_city, spots: ["Lăng Chủ tịch Hồ Chí Minh", "Hoàng thành Thăng Long (Tour đêm)", "Chùa Một Cột", "Phố ẩm thực Đảo Ngọc Ngũ Xã"] },
+                            { name: "Phường Tây Hồ", type: "Phường", image: PHOTO_BANK.coffee_chill, spots: ["Phố đi bộ Trịnh Công Sơn", "Chùa Trấn Quốc & Phủ Tây Hồ", "Tổ hợp Lotte Mall West Lake", "Cà phê & Lounge ven Hồ Tây"] },
+                            { name: "Phường Văn Miếu - Quốc Tử Giám", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Văn Miếu - Quốc Tử Giám (Tour đêm Tinh hoa Đạo học)", "Phố ẩm thực Tống Duy Tân"] },
+                            { name: "Phường Sơn Tây", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Làng cổ Đường Lâm", "Thành cổ Sơn Tây", "Làng văn hóa các dân tộc Việt Nam"] },
+                            { name: "Xã Bát Tràng", type: "Xã", image: PHOTO_BANK.temple_ancient, spots: ["Bảo tàng Gốm Bát Tràng", "Cảng du lịch sông Hồng Chương Dương Độ - Bát Tràng"] },
+                            { name: "Xã Hương Sơn & Ba Vì", type: "Xã", image: PHOTO_BANK.ninhbinh_river, spots: ["Quần thể danh thắng Chùa Hương", "Vườn quốc gia Ba Vì"] }
+                        ],
+                        tourism: [
+                            { name: "Phố bia Tạ Hiện, Phố đi bộ Hồ Gươm & Tour đêm Phố Cổ", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.nightlife_street, time: "18:00 - 02:00 sáng", desc: "'Ngã tư quốc tế' sầm uất nhất Thủ đô với bia hơi vỉa hè, acoustic pub, bar/lounge và phố ẩm thực đêm Tống Duy Tân." },
+                            { name: "Tổ hợp Lotte Mall West Lake, Hồ Tây & Phố Trịnh Công Sơn", category: "🎉 Giải trí & Chill", kind: "nightlife", image: PHOTO_BANK.hanoi_night, time: "09:00 - 23:30", desc: "Thủy cung lớn nhất Hà Nội, tổ hợp mua sắm - giải trí hiện đại và cung đường cà phê ngắm hoàng hôn Hồ Tây." },
+                            { name: "Lăng Chủ tịch Hồ Chí Minh, Hoàng thành Thăng Long & Văn Miếu", category: "🏛️ Di sản & Danh thắng", kind: "scenic", image: PHOTO_BANK.hanoi_city, time: "07:30 - 21:30 (Có tour đêm)", desc: "Quần thể di tích lịch sử ngàn năm văn hiến kết hợp trình diễn ánh sáng 3D Mapping về đêm đặc sắc." },
+                            { name: "Bến du thuyền sông Hồng (Chương Dương Độ) & Cầu Long Biên", category: "⚓ Bến cảng & Du thuyền", kind: "scenic", image: PHOTO_BANK.cruise_harbor, time: "08:00 - 22:00", desc: "Trải nghiệm du thuyền ngắm cầu Long Biên lịch sử, bãi đá sông Hồng và tuyến du lịch đường thủy đi Bát Tràng." },
+                            { name: "Foodtour Phở Hà Nội, Bún chả Hàng Mành, Chả cá Lã Vọng & Cà phê Trứng", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.vn_food_pho, time: "Cả ngày", desc: "Tinh hoa ẩm thực Michelin Guide Hà Nội tại Phố Cổ, phở cuốn Ngũ Xã và cà phê trứng Giảng trứ danh." }
+                        ]
+                    },
+                    {
+                        name: "Thành phố Quảng Ninh",
+                        isCentralCity: true,
+                        type: "Thành phố trực thuộc TW (Cấp Tỉnh)",
+                        mergedFrom: "Nâng cấp tỉnh Quảng Ninh lên Thành phố trực thuộc Trung ương",
+                        adminCenter: "Phường Hạ Long & Phường Hồng Gai",
+                        image: PHOTO_BANK.halong_port,
+                        overview: "Thành phố trực thuộc Trung ương sở hữu Di sản thiên nhiên thế giới Vịnh Hạ Long, hệ thống cảng tàu khách quốc tế hiện đại nhất Việt Nam, non thiêng Yên Tử và 2 Đặc khu biển đảo Vân Đồn, Cô Tô.",
+                        units: [
+                            { name: "Phường Hạ Long & Hồng Gai", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.halong_port, spots: ["Bảo tàng & Thư viện Quảng Ninh", "Cung Cá Heo", "Cảng Hòn Gai - Bến Đoan", "Đường bao biển Trần Quốc Nghiễn"] },
+                            { name: "Phường Bãi Cháy", type: "Phường (Trung tâm du lịch)", image: PHOTO_BANK.cruise_harbor, spots: ["Cảng tàu khách Quốc tế Hạ Long", "Cảng tàu Quốc tế Tuần Châu", "Sun World Ha Long", "Phố cổ Bãi Cháy", "Valley Beach Club"] },
+                            { name: "Phường Cẩm Phả", type: "Phường", image: PHOTO_BANK.beach_resort, spots: ["Khu khoáng nóng Yoko Onsen Quang Hanh", "Đền Cửa Ông", "Cảng Cẩm Phả", "Vịnh Bái Tử Long"] },
+                            { name: "Phường Uông Bí & Đông Triều", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Quần thể di tích danh thắng Yên Tử (Chùa Đồng)", "Legacy Yên Tử", "Chùa Ba Vàng", "Khu di tích Nhà Trần"] },
+                            { name: "Phường Móng Cái", type: "Phường (Đô thị cửa khẩu)", image: PHOTO_BANK.beach_resort, spots: ["Mũi Sa Vĩ", "Bãi biển Trà Cổ", "Cửa khẩu Quốc tế Móng Cái", "Phố đi bộ đêm Móng Cái"] },
+                            { name: "Đặc khu Vân Đồn", type: "Đặc khu biển đảo", image: PHOTO_BANK.yacht_marina, spots: ["Cảng cao cấp Ao Tiên Vân Đồn", "Đảo Quan Lạn - Minh Châu", "Chùa Cái Bầu", "Sonasea Vân Đồn Harbor City"] },
+                            { name: "Đặc khu Cô Tô", type: "Đặc khu biển đảo", image: PHOTO_BANK.island_aerial, spots: ["Cảng tàu Cô Tô", "Bãi đá Cầu Mỵ", "Biển Hồng Vàn - Vàn Chảy", "Đảo Cô Tô Con"] },
+                            { name: "Xã Bình Liêu", type: "Xã biên giới", image: PHOTO_BANK.mountain_terrace, spots: ["Sống lưng khủng long Bình Liêu (Mốc 1305)", "Thác Khe Vằn"] }
+                        ],
+                        tourism: [
+                            { name: "Cảng tàu khách Quốc tế Hạ Long, Cảng Tuần Châu & Cảng Ao Tiên Vân Đồn", category: "⚓ Cảng Du thuyền & Vịnh", kind: "scenic", image: PHOTO_BANK.halong_port, time: "06:30 - 22:00", desc: "Hệ thống cảng du thuyền 5 sao hiện đại bậc nhất Đông Nam Á, cửa ngõ đón siêu du thuyền quốc tế tham quan Vịnh Hạ Long và Vịnh Bái Tử Long." },
+                            { name: "Tổ hợp Sun World Ha Long, Valley Beach Club & Phố đêm Bãi Cháy", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.beach_club, time: "09:00 - 02:00 sáng", desc: "Cáp treo Nữ Hoàng vượt biển, công viên Rồng, đại nhạc hội DJ bên bờ biển Valley Beach Club, phố đi bộ Bãi Cháy và du thuyền ăn tối trên vịnh." },
+                            { name: "Khu nghỉ dưỡng khoáng nóng Yoko Onsen Quang Hanh & Đảo Tuần Châu", category: "🎉 Nghỉ dưỡng & Giải trí", kind: "nightlife", image: PHOTO_BANK.beach_resort, time: "08:00 - 21:30", desc: "Trải nghiệm tắm khoáng nóng chuẩn Nhật Bản giữa thung lũng núi đá vôi và xem nhạc nước Tuần Châu." },
+                            { name: "Non thiêng Yên Tử (Di sản Thế giới) & Đặc khu Cô Tô - Vân Đồn", category: "🏛️ Di sản & Biển đảo", kind: "scenic", image: PHOTO_BANK.island_aerial, time: "Cả ngày", desc: "Kinh đô Phật giáo Trúc Lâm trên đỉnh Chùa Đồng mây phủ và thiên đường biển đảo Cô Tô, Quan Lạn nước trong như ngọc." },
+                            { name: "Chả mực Hạ Long, Hải sản Bè Hồng Hạnh, Sam biển & Sữa chua trân châu", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.seafood_feast, time: "10:00 - 23:30", desc: "Thưởng thức hải sản tươi sống nhìn thẳng ra vịnh tại khu Hòn Gai - Cột 5, ốc xào tương và chả mực giã tay." }
+                        ]
+                    },
+                    {
+                        name: "Thành phố Bắc Ninh",
+                        isCentralCity: true,
+                        type: "Thành phố trực thuộc TW (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất Bắc Ninh & Bắc Giang - Nâng cấp lên Thành phố trực thuộc TW",
+                        adminCenter: "Phường Kinh Bắc & Phường Bắc Giang",
+                        image: PHOTO_BANK.temple_ancient,
+                        overview: "Thành phố trực thuộc Trung ương hiện đại - Thủ phủ công nghiệp công nghệ cao và văn hóa Kinh Bắc ngàn năm, nơi giao thoa giữa Dân ca Quan họ, các khu phố đêm Hàn - Trung sầm uất và sinh thái Tây Yên Tử.",
+                        units: [
+                            { name: "Phường Kinh Bắc & Suối Hoa", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.nightlife_street, spots: ["Trung tâm Văn hóa Kinh Bắc", "Nhà hát Dân ca Quan họ", "Thành cổ Bắc Ninh", "Phố đêm Hàn Quốc - Trung Quốc (Võ Cường - Ninh Xá)"] },
+                            { name: "Phường Vũ Ninh", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Đền Bà Chúa Kho", "Làng Quan họ cổ Viêm Xá (Diềm)"] },
+                            { name: "Phường Từ Sơn", type: "Phường (Đô thị sầm uất)", image: PHOTO_BANK.temple_ancient, spots: ["Đền Đô (Thờ 8 vị vua nhà Lý)", "Chợ đêm Từ Sơn", "Làng mỹ nghệ Đồng Kỵ"] },
+                            { name: "Phường Bắc Giang & Việt Yên", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.temple_ancient, spots: ["Thành cổ Xương Giang", "Chùa Bổ Đà", "Làng cổ Thổ Hà", "Cảng sông Á Lữ - Sông Cầu"] },
+                            { name: "Phường Thuận Thành & Phật Tích", type: "Phường / Xã", image: PHOTO_BANK.temple_ancient, spots: ["Chùa Dâu", "Chùa Bút Tháp", "Chùa Phật Tích", "Làng tranh dân gian Đông Hồ"] },
+                            { name: "Xã Tây Yên Tử & Trí Yên", type: "Xã", image: PHOTO_BANK.mountain_terrace, spots: ["Khu du lịch tâm linh - sinh thái Tây Yên Tử", "Chùa Vĩnh Nghiêm (Di sản Mộc bản UNESCO)"] },
+                            { name: "Xã Sơn Động & Lục Ngạn", type: "Xã", image: PHOTO_BANK.island_aerial, spots: ["Cao nguyên Đồng Cao", "Hồ Cấm Sơn", "Hồ Khuôn Thần", "Vùng vải thiều Lục Ngạn"] }
+                        ],
+                        tourism: [
+                            { name: "Phố đêm Hàn Quốc - Trung Quốc (Kinh Bắc), Chợ đêm Từ Sơn & Hồ Hòa Đình", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.nightlife_street, time: "17:30 - 01:00 sáng", desc: "Thiên đường ẩm thực và giải trí về đêm rực rỡ ánh đèn neon tại khu Ngọc Hân Công Chúa, đường Lý Thái Tổ và các quán pub, BBQ Hàn - Nhật." },
+                            { name: "Trải nghiệm Hát Quan họ trên thuyền đêm & Không gian Làng Diềm", category: "🎉 Văn hóa & Giải trí", kind: "nightlife", image: PHOTO_BANK.hoian_lantern, time: "19:00 - 22:00", desc: "Thưởng thức làn điệu Dân ca Quan họ Bắc Ninh (Di sản UNESCO) do các liền anh, liền chị biểu diễn trên hồ nước lung linh." },
+                            { name: "Quần thể Đền Đô, Chùa Phật Tích, Chùa Bút Tháp & Chùa Vĩnh Nghiêm", category: "🏛️ Di sản Văn hóa", kind: "scenic", image: PHOTO_BANK.temple_ancient, time: "07:00 - 18:00", desc: "Hệ thống cổ tự lâu đời nhất Việt Nam lưu giữ tượng Phật đá thời Lý, tháp Báo Nghiêm và hơn 3.000 mộc bản kinh Phật." },
+                            { name: "Cảng đường thủy sông Cầu - Bến Thổ Hà, Tây Yên Tử & Cao nguyên Đồng Cao", category: "⚓ Bến sông & Sinh thái", kind: "scenic", image: PHOTO_BANK.mountain_terrace, time: "Cả ngày", desc: "Đi phà qua bến sông Cầu khám phá làng cổ Thổ Hà, cáp treo lên đỉnh Tây Yên Tử và cắm trại săn mây tại Đồng Cao." },
+                            { name: "Chim trời Bắc Ninh, Bánh phu thê Đình Bảng, Phở gan cháy & Vải thiều", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.street_food, time: "Cả ngày", desc: "Đặc sản chim câu, vạc, trích nức tiếng xứ Kinh Bắc, bánh khúc làng Diềm, nem Bùi và bánh đa kế." }
+                        ]
+                    },
+                    {
+                        name: "Thành phố Hải Phòng",
+                        isCentralCity: true,
+                        type: "Thành phố trực thuộc TW (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất TP. Hải Phòng và tỉnh Hải Dương",
+                        adminCenter: "Phường Thủy Nguyên (Bắc sông Cấm) & Phường Hồng Bàng",
+                        image: PHOTO_BANK.container_port,
+                        overview: "Thành phố Cảng biển lớn nhất miền Bắc kết hợp Xứ Đông văn hiến, nổi tiếng với Cảng Hoàng Diệu - Lạch Huyện, Di sản thế giới Quần đảo Cát Bà, Côn Sơn - Kiếp Bạc và thiên đường Foodtour.",
+                        units: [
+                            { name: "Phường Thủy Nguyên", type: "Phường (Trung tâm hành chính mới)", image: PHOTO_BANK.saigon_night, spots: ["Quảng trường Bắc Sông Cấm", "Vinhomes Royal Island Vũ Yên (Phố đi bộ bờ sông)", "Tuyệt Tình Cốc", "Bạch Đằng Giang"] },
+                            { name: "Phường Hồng Bàng & Ngô Quyền", type: "Phường (Đô thị Cảng)", image: PHOTO_BANK.container_port, spots: ["Cảng Hoàng Diệu - Bến Nghiêng", "Nhà hát Lớn Hải Phòng", "Phố đi bộ Thế Lữ bên sông Tam Bạc", "Chợ Cát Bi"] },
+                            { name: "Phường Đồ Sơn", type: "Phường", image: PHOTO_BANK.beach_resort, spots: ["Khu du lịch Quốc tế Đồi Rồng (Dragon Ocean)", "Bãi biển Đồ Sơn", "Bến tàu Không số K15", "Đảo Hòn Dấu"] },
+                            { name: "Đặc khu Cát Hải", type: "Đặc khu biển đảo", image: PHOTO_BANK.island_aerial, spots: ["Quần đảo Cát Bà", "Vịnh Lan Hạ", "Cảng nước sâu Quốc tế Lạch Huyện", "Bến du thuyền Cái Bèo"] },
+                            { name: "Đặc khu Bạch Long Vĩ", type: "Đặc khu biển đảo", image: PHOTO_BANK.cruise_harbor, spots: ["Âu cảng Bạch Long Vĩ", "Hải đăng Bạch Long Vĩ"] },
+                            { name: "Phường Hải Dương & Chí Linh", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Khu di tích Quốc gia đặc biệt Côn Sơn - Kiếp Bạc", "Phố đi bộ Bạch Đằng", "Đảo Cò Chi Lăng Nam"] }
+                        ],
+                        tourism: [
+                            { name: "Cảng Hoàng Diệu, Cảng Quốc tế Lạch Huyện & Bến du thuyền Vịnh Lan Hạ", category: "⚓ Cảng Biển & Du thuyền", kind: "scenic", image: PHOTO_BANK.container_port, time: "Cả ngày", desc: "Biểu tượng hơn 100 năm của Thành phố Cảng Hải Phòng cùng bến du thuyền Cái Bèo - Cát Bà khám phá Vịnh Lan Hạ." },
+                            { name: "Phố đi bộ Vũ Yên, Phố đêm Thế Lữ & Khu du lịch Đồi Rồng Đồ Sơn", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.beach_club, time: "16:00 - 24:00", desc: "Công viên giải trí biển nhân tạo Dragon Ocean, nhạc nước Vũ Yên và dải phố đêm lung linh dọc bờ sông Tam Bạc." },
+                            { name: "Foodtour Hải Phòng (Chợ Cát Bi, Chợ Lương Văn Can, Đường Lạch Tray)", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.street_food, time: "07:00 - 23:00", desc: "Bánh đa cua Hải Phòng, bánh mì que cay, ốc Hải Phòng đủ loại sốt, dừa dầm và bánh đậu xanh Hải Dương." },
+                            { name: "Di sản Thế giới Quần đảo Cát Bà & Khu di tích Côn Sơn - Kiếp Bạc", category: "🏛️ Di sản & Sinh thái", kind: "scenic", image: PHOTO_BANK.island_aerial, time: "Cả ngày", desc: "Chèo kayak trên Vịnh Lan Hạ, trekking Vườn quốc gia Cát Bà và chiêm bái thánh địa Côn Sơn - Kiếp Bạc." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Hưng Yên",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Hưng Yên và tỉnh Thái Bình",
+                        adminCenter: "Phường Phố Hiến",
+                        image: PHOTO_BANK.theme_park,
+                        overview: "Tâm điểm giải trí mới phía Đông Hà Nội với siêu tổ hợp Grand World (Văn Giang), thương cảng cổ Phố Hiến và biển vô cực Thái Bình.",
+                        units: [
+                            { name: "Phường Phố Hiến", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.temple_ancient, spots: ["Quần thể di tích Phố Hiến", "Hồ Bán Nguyệt", "Văn miếu Xích Đằng", "Chùa Chuông"] },
+                            { name: "Xã Văn Giang", type: "Xã (Đô thị giải trí)", image: PHOTO_BANK.theme_park, spots: ["Mega Grand World (The Venice & K-Town)", "Công viên sóng VinWonders Wave Park", "Đô thị xanh Ecopark"] },
+                            { name: "Phường Thái Bình & Xã Tiền Hải", type: "Phường / Xã", image: PHOTO_BANK.beach_resort, spots: ["Chùa Keo", "Đền Trần Thái Bình", "Biển vô cực Quang Lang", "Biển Cồn Vành - Cồn Đen"] }
+                        ],
+                        tourism: [
+                            { name: "Siêu quần thể ăn chơi Mega Grand World (The Venice & K-Town) & Ecopark", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.theme_park, time: "09:00 - 02:00 sáng", desc: "Đi thuyền Gondola trên sông Venice, xem show thực cảnh The Grand Voyage, bắn pháo hoa mỗi tối và dạo phố Hàn Quốc K-Town." },
+                            { name: "Thương cảng cổ Phố Hiến, Làng cổ Nôm & Chùa Keo", category: "🏛️ Di sản & Bến cổ", kind: "scenic", image: PHOTO_BANK.temple_ancient, time: "07:00 - 18:00", desc: "Dấu tích thương cảng quốc tế 'Thứ nhất Kinh Kỳ, thứ nhì Phố Hiến' bên sông Hồng và kiến trúc gỗ Chùa Keo." },
+                            { name: "Biển vô cực Quang Lang (Thụy Hải) & Cồn Vành", category: "⚓ Biển & Bến cá", kind: "scenic", image: PHOTO_BANK.beach_resort, time: "04:30 - 18:00", desc: "Bãi biển mặt gương phản chiếu bầu trời lúc bình minh tuyệt đẹp và rừng ngập mặn ven biển." },
+                            { name: "Bún thang lươn Phố Hiến, Nhãn lồng Hưng Yên, Canh cá Quỳnh Côi & Bánh cáy", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.vn_food_pho, time: "Cả ngày", desc: "Thưởng thức canh cá rô đồng Thái Bình, gà Đông Tảo và bún thang lươn trứ danh." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Ninh Bình",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất 3 tỉnh: Ninh Bình, Hà Nam và Nam Định",
+                        adminCenter: "Phường Hoa Lư",
+                        image: PHOTO_BANK.ninhbinh_river,
+                        overview: "Kinh đô du lịch Di sản thế giới Tràng An - Hoa Lư, đại quần thể tâm linh Tam Chúc - Bái Đính và vùng văn hóa Thiên Trường Nam Định.",
+                        units: [
+                            { name: "Phường Hoa Lư & Xã Tràng An", type: "Phường / Xã (Trung tâm)", image: PHOTO_BANK.ninhbinh_river, spots: ["Bến thuyền Tràng An", "Tam Cốc - Bích Động", "Hang Múa", "Phố cổ Hoa Lư về đêm", "Chùa Bái Đính"] },
+                            { name: "Phường Tam Chúc & Phủ Lý", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Khu du lịch Tam Chúc", "Phố đi bộ Công viên Lễ hội (Sun Urban)", "Chùa Địa Tạng Phi Lai Tự"] },
+                            { name: "Phường Nam Định & Xã Giao Thủy", type: "Phường / Xã", image: PHOTO_BANK.beach_resort, spots: ["Đền Trần - Chùa Phổ Minh", "Phủ Dầy", "Vườn quốc gia Xuân Thủy", "Foodtour Nam Định"] }
+                        ],
+                        tourism: [
+                            { name: "Phố cổ Hoa Lư về đêm, Chùa Bái Đính đêm & Nhạc nước Tam Chúc", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.hoian_lantern, time: "17:00 - 23:00", desc: "Ngồi thuyền ngắm tháp Bạc lung linh trên hồ Kỳ Lân giữa Phố cổ Hoa Lư, thưởng thức ẩm thực truyền thống và xem nhạc nước." },
+                            { name: "Bến thuyền Di sản Tràng An, Bến Tam Cốc & Đỉnh Hang Múa", category: "⚓ Bến thuyền & Danh thắng", kind: "scenic", image: PHOTO_BANK.ninhbinh_river, time: "07:00 - 17:30", desc: "Bến thuyền du lịch lớn nhất miền Bắc đưa du khách xuyên qua hàng chục hang động đá vôi ngập nước kỳ vĩ." },
+                            { name: "Thịt dê núi Ninh Bình, Cơm cháy, Phở bò Nam Định & Cá kho Vũ Đại", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.vn_food_pho, time: "Cả ngày", desc: "Foodtour Nam Định (bánh xíu páo, phở bò gia truyền) và đặc sản dê núi Trường Yên." }
+                        ]
+                    }
+                ]
+            },
+            {
+                region: "Trung du và miền núi phía Bắc",
+                code: "TDMNPB",
+                image: PHOTO_BANK.mountain_terrace,
+                description: "Vùng núi cao hùng vĩ gồm 9 tỉnh với những cung đèo huyền thoại, ruộng bậc thang, bản làng săn mây và chợ tình vùng cao.",
+                provinces: [
+                    {
+                        name: "Tỉnh Lào Cai",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Lào Cai và tỉnh Yên Bái",
+                        adminCenter: "Phường Yên Bái & Phường Lào Cai",
+                        image: PHOTO_BANK.mountain_terrace,
+                        overview: "Thủ phủ du lịch Tây Bắc kết nối đỉnh Fansipan - Sa Pa, ruộng bậc thang Mù Cang Chải và bến du thuyền Hồ Thác Bà.",
+                        units: [
+                            { name: "Phường Sa Pa", type: "Phường du lịch", image: PHOTO_BANK.mountain_terrace, spots: ["Đỉnh Fansipan", "Chợ đêm & Phố Cầu Mây Sa Pa", "Bản Cát Cát", "Nhà thờ Đá Sa Pa"] },
+                            { name: "Phường Yên Bái & Xã Thác Bà", type: "Phường / Xã (Trung tâm)", image: PHOTO_BANK.island_aerial, spots: ["Bến cảng du lịch Hồ Thác Bà", "Mù Cang Chải", "Đèo Khau Phạ", "Khoáng nóng Trạm Tấu"] }
+                        ],
+                        tourism: [
+                            { name: "Phố Tây Cầu Mây, Chợ Tình Sa Pa & Các quán Pub/Cafe săn mây", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.nightlife_street, time: "18:00 - 24:00", desc: "Không khí nhộn nhịp quanh Nhà thờ Đá, phố nướng đêm Sa Pa, các quán bar acoustic ấm cúng trong sương mù." },
+                            { name: "Đỉnh Fansipan, Ruộng bậc thang Mù Cang Chải & Cảng du lịch Hồ Thác Bà", category: "⚓ Danh thắng & Bến hồ", kind: "scenic", image: PHOTO_BANK.mountain_terrace, time: "07:00 - 18:00", desc: "Chinh phục Nóc nhà Đông Dương 3.143m và đi tàu du lịch từ cảng Hương Lý khám phá 1.300 đảo trên Hồ Thác Bà." },
+                            { name: "Lẩu cá tầm - cá hồi Sa Pa, Thắng cố Bắc Hà, Đồ nướng & Xôi ngũ sắc", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.street_food, time: "Cả ngày", desc: "Thưởng thức lẩu cá hồi tươi nóng hổi giữa tiết trời se lạnh và rượu táo mèo Tây Bắc." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Tuyên Quang",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Tuyên Quang và tỉnh Hà Giang",
+                        adminCenter: "Phường Minh Xuân",
+                        image: PHOTO_BANK.mountain_terrace,
+                        overview: "Hội tụ Cao nguyên đá Đồng Văn, Cột cờ Lũng Cú, dòng sông Nho Quế, Lễ hội Thành Tuyên và hồ sinh thái Na Hang.",
+                        units: [
+                            { name: "Phường Minh Xuân", type: "Phường (Trung tâm)", image: PHOTO_BANK.hoian_lantern, spots: ["Quảng trường Nguyễn Tất Thành (Lễ hội Thành Tuyên)", "Khu di tích Tân Trào", "Khoáng nóng Mỹ Lâm"] },
+                            { name: "Xã Đồng Văn, Mèo Vạc & Lũng Cú", type: "Xã", image: PHOTO_BANK.mountain_terrace, spots: ["Phố cổ Đồng Văn về đêm", "Cột cờ Lũng Cú", "Bến thuyền Hẻm vực Tu Sản - Sông Nho Quế", "Bản Lô Lô Chải"] },
+                            { name: "Xã Na Hang", type: "Xã", image: PHOTO_BANK.island_aerial, spots: ["Bến thủy du lịch Na Hang - Lâm Bình"] }
+                        ],
+                        tourism: [
+                            { name: "Phố cổ Đồng Văn về đêm & Lễ hội đèn lồng khổng lồ Thành Tuyên", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.hoian_lantern, time: "18:30 - 23:00", desc: "Giao lưu văn nghệ vùng cao, uống cà phê Phố Cổ và chiêm ngưỡng hàng trăm mô hình đèn Trung thu khổng lồ rực rỡ." },
+                            { name: "Bến thuyền Sông Nho Quế (Hẻm Tu Sản) & Bến du thuyền Hồ Na Hang", category: "⚓ Bến thuyền & Kỳ quan", kind: "scenic", image: PHOTO_BANK.mountain_terrace, time: "07:00 - 17:30", desc: "Đi thuyền giữa hẻm vực sâu nhất Đông Nam Á dưới chân đèo Mã Pí Lèng và lòng hồ thủy điện Tuyên Quang." },
+                            { name: "Thắng dền, Cháo ấu tẩu, Lẩu gà đen vùng cao & Cá lăng Na Hang", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.street_food, time: "Cả ngày", desc: "Món cháo ấu tẩu bổ dưỡng ăn đêm tại Hà Giang và cá lăng nướng sông Gâm." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Cao Bằng",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới tỉnh Cao Bằng",
+                        adminCenter: "Phường Thục Phán",
+                        image: PHOTO_BANK.waterfall,
+                        overview: "Công viên địa chất toàn cầu Non nước Cao Bằng với Thác Bản Giốc, Núi Mắt Thần và khu di tích Pác Bó.",
+                        units: [
+                            { name: "Phường Thục Phán", type: "Phường (Trung tâm)", image: PHOTO_BANK.nightlife_street, spots: ["Phố đi bộ Kim Đồng", "Bến sông Bằng Giang"] },
+                            { name: "Xã Đàm Thủy & Trường Hà", type: "Xã", image: PHOTO_BANK.waterfall, spots: ["Thác Bản Giốc", "Động Ngườm Ngao", "Làng đá Khuổi Ky", "Khu di tích Pác Bó"] }
+                        ],
+                        tourism: [
+                            { name: "Phố đi bộ Kim Đồng ven sông Bằng Giang", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.nightlife_street, time: "19:00 - 23:00", desc: "Tuyến phố đêm sầm uất trung tâm Cao Bằng với chợ ẩm thực, hát Then đàn Tính và các trò chơi dân gian." },
+                            { name: "Thác Bản Giốc, Động Ngườm Ngao & Núi Mắt Thần", category: "🏛️ Kỳ quan Thiên nhiên", kind: "scenic", image: PHOTO_BANK.waterfall, time: "07:00 - 17:30", desc: "Đi bè mảng dưới chân thác nước biên giới lớn nhất Đông Nam Á và cắm trại tại thảo nguyên Núi Mắt Thần." },
+                            { name: "Phở vịt quay 7 vị, Bánh cuốn canh Cao Bằng & Hạt dẻ Trùng Khánh", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.vn_food_pho, time: "Cả ngày", desc: "Đặc sản bánh cuốn ăn kèm nước hầm xương nóng hổi và vịt quay móc mật." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Thái Nguyên",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Thái Nguyên và tỉnh Bắc Kạn",
+                        adminCenter: "Phường Phan Đình Phùng",
+                        image: PHOTO_BANK.island_aerial,
+                        overview: "Thủ phủ Đệ nhất danh trà Tân Cương kết hợp bến thuyền danh thắng Hồ Ba Bể và Hồ Núi Cốc.",
+                        units: [
+                            { name: "Phường Phan Đình Phùng", type: "Phường (Trung tâm)", image: PHOTO_BANK.nightlife_street, spots: ["Quảng trường Võ Nguyên Giáp", "Đồi chè Tân Cương", "Hồ Núi Cốc"] },
+                            { name: "Xã Ba Bể", type: "Xã", image: PHOTO_BANK.island_aerial, spots: ["Bến xuồng Vườn quốc gia Hồ Ba Bể", "Bản Pác Ngòi"] }
+                        ],
+                        tourism: [
+                            { name: "Bến thuyền Hồ Ba Bể, Động Puông & Khu du lịch Hồ Núi Cốc", category: "⚓ Bến thuyền & Sinh thái", kind: "scenic", image: PHOTO_BANK.island_aerial, time: "07:00 - 18:00", desc: "Du ngoạn bằng thuyền độc mộc trên hồ nước ngọt tự nhiên trên núi lớn nhất Việt Nam." },
+                            { name: "Quảng trường Võ Nguyên Giáp, Phố ẩm thực đêm & Không gian Trà Tân Cương", category: "🎉 Ăn chơi & Thưởng trà", kind: "nightlife", image: PHOTO_BANK.coffee_chill, time: "18:00 - 23:00", desc: "Không gian trà đạo truyền thống và các khu phố ẩm thực sinh viên nhộn nhịp tại trung tâm Thái Nguyên." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Phú Thọ",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất 3 tỉnh: Phú Thọ, Vĩnh Phúc và Hòa Bình",
+                        adminCenter: "Phường Việt Trì",
+                        image: PHOTO_BANK.dalat_pine,
+                        overview: "Đất Tổ Vua Hùng kết hợp thị trấn sương mù Tam Đảo, bến cảng lòng hồ Hòa Bình - Thung Nai và thung lũng Mai Châu.",
+                        units: [
+                            { name: "Phường Việt Trì & Xã Hy Cương", type: "Phường / Xã (Trung tâm)", image: PHOTO_BANK.temple_ancient, spots: ["Khu di tích Đền Hùng", "Công viên Văn Lang", "Khoáng nóng Thanh Thủy"] },
+                            { name: "Xã Tam Đảo", type: "Xã", image: PHOTO_BANK.dalat_pine, spots: ["Quảng trường & Chợ đêm Tam Đảo", "Quán Gió Tam Đảo", "Hồ Đại Lải - Flamingo"] },
+                            { name: "Phường Hòa Bình & Xã Mai Châu", type: "Phường / Xã", image: PHOTO_BANK.cruise_harbor, spots: ["Cảng Thung Nai - Lòng hồ Hòa Bình", "Bản Lác Mai Châu"] }
+                        ],
+                        tourism: [
+                            { name: "Chợ đêm Thị trấn Tam Đảo, Cafe săn mây & Bản Lác Mai Châu", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.dalat_pine, time: "17:00 - 24:00", desc: "Thưởng thức đồ nướng sương mù tại quảng trường Tam Đảo, acoustic show trên mây và nhảy sạp đốt lửa trại tại Mai Châu." },
+                            { name: "Cảng du lịch Thung Nai - Hồ Hòa Bình & Khu di tích Quốc gia đặc biệt Đền Hùng", category: "⚓ Cảng Hồ & Tâm linh", kind: "scenic", image: PHOTO_BANK.cruise_harbor, time: "07:00 - 18:00", desc: "Đi tàu từ cảng Bích Hạ - Thung Nai ngắm 'Vịnh Hạ Long trên núi' và hành hương về Đền Hùng." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Sơn La",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới tỉnh Sơn La",
+                        adminCenter: "Phường Chiềng Cơi",
+                        image: PHOTO_BANK.mountain_terrace,
+                        overview: "Thiên đường nghỉ dưỡng Cao nguyên Mộc Châu, biển mây Tà Xùa và du lịch lòng hồ thủy điện Sơn La.",
+                        units: [
+                            { name: "Phường Mộc Châu & Xã Tà Xùa", type: "Phường / Xã", image: PHOTO_BANK.mountain_terrace, spots: ["Cầu kính Bạch Long", "Phố đi bộ - Chợ đêm Mộc Châu", "Đồi chè Trái tim", "Đỉnh Gió Tà Xùa"] },
+                            { name: "Xã Quỳnh Nhai", type: "Xã", image: PHOTO_BANK.cruise_harbor, spots: ["Bến cảng du lịch Pá Uôn - Lòng hồ Sông Đà"] }
+                        ],
+                        tourism: [
+                            { name: "Phố đi bộ - Chợ đêm Mộc Châu, Cầu kính Bạch Long & Đỉnh Gió Tà Xùa", category: "🎉 Ăn chơi & Check-in", kind: "nightlife", image: PHOTO_BANK.mountain_terrace, time: "08:00 - 23:00", desc: "Tổ hợp giải trí Mộc Châu Island với cầu kính dài nhất thế giới và các tiệm cà phê săn hoàng hôn trên mây tại Tà Xùa." },
+                            { name: "Bến thuyền Vịnh Uy Phong - Cầu Pá Uôn (Quỳnh Nhai)", category: "⚓ Bến cảng Lòng hồ", kind: "scenic", image: PHOTO_BANK.cruise_harbor, time: "07:30 - 17:30", desc: "Du thuyền trên biển hồ sông Đà mênh mông dưới chân cây cầu có trụ cao nhất Việt Nam." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Điện Biên",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới tỉnh Điện Biên",
+                        adminCenter: "Phường Điện Biên Phủ",
+                        image: PHOTO_BANK.mountain_terrace,
+                        overview: "Mảnh đất lịch sử Điện Biên Phủ lừng lẫy năm châu, cực Tây A Pa Chải và hồ Pá Khoang.",
+                        units: [
+                            { name: "Phường Điện Biên Phủ & Mường Thanh", type: "Phường (Trung tâm)", image: PHOTO_BANK.temple_ancient, spots: ["Đồi A1 & Hầm Đờ Cát", "Bảo tàng Chiến thắng Điện Biên Phủ", "Phố đêm Mường Thanh"] }
+                        ],
+                        tourism: [
+                            { name: "Quần thể Chiến trường Điện Biên Phủ, Hồ Pá Khoang & Cực Tây A Pa Chải", category: "🏛️ Lịch sử & Danh thắng", kind: "scenic", image: PHOTO_BANK.mountain_terrace, time: "07:30 - 21:00", desc: "Chiêm ngưỡng bức tranh Panorama khổng lồ và giao lưu văn hóa Thái tại các bản du lịch Mường Thanh." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Lai Châu",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới tỉnh Lai Châu",
+                        adminCenter: "Phường Tân Phong",
+                        image: PHOTO_BANK.mountain_terrace,
+                        overview: "Vùng đất của đèo Ô Quy Hồ, Cầu kính Rồng Mây và bản du lịch ASEAN Sin Suối Hồ.",
+                        units: [
+                            { name: "Phường Tân Phong & Xã Sơn Bình", type: "Phường / Xã", image: PHOTO_BANK.mountain_terrace, spots: ["Cầu kính Rồng Mây - Đèo Ô Quy Hồ", "Bản Sin Suối Hồ", "Phố đi bộ Hoàng Diệu"] }
+                        ],
+                        tourism: [
+                            { name: "Khu du lịch Cầu kính Rồng Mây (Đèo Ô Quy Hồ) & Bản Sin Suối Hồ", category: "🎉 Giải trí Mạo hiểm", kind: "scenic", image: PHOTO_BANK.mountain_terrace, time: "07:30 - 18:00", desc: "Đi thang máy lồng kính xuyên núi ở độ cao 2.200m ngắm trọn đèo Ô Quy Hồ hùng vĩ." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Lạng Sơn",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới tỉnh Lạng Sơn",
+                        adminCenter: "Phường Lương Văn Tri",
+                        image: PHOTO_BANK.mountain_terrace,
+                        overview: "Đô thị cửa khẩu sầm uất với Phố đi bộ Kỳ Lừa, đỉnh Mẫu Sơn và thung lũng Bắc Sơn.",
+                        units: [
+                            { name: "Phường Lương Văn Tri & Đông Kinh", type: "Phường (Trung tâm)", image: PHOTO_BANK.nightlife_street, spots: ["Phố đi bộ Kỳ Lừa & Chợ đêm", "Động Tam Thanh", "Đỉnh Mẫu Sơn"] }
+                        ],
+                        tourism: [
+                            { name: "Phố đi bộ Kỳ Lừa, Chợ Đông Kinh & Đỉnh Mẫu Sơn", category: "🎉 Ăn chơi & Mua sắm", kind: "nightlife", image: PHOTO_BANK.nightlife_street, time: "08:00 - 23:00", desc: "Thưởng thức vịt quay, khâu nhục, phở chua tại chợ đêm Kỳ Lừa và săn mây trên đỉnh Mẫu Sơn." }
+                        ]
+                    }
+                ]
+            },
+            {
+                region: "Bắc Trung Bộ",
+                code: "BTB",
+                image: PHOTO_BANK.hue_citadel,
+                description: "Con đường Di sản miền Trung với TP. Huế trực thuộc Trung ương, vương quốc hang động Quảng Trị, biển Sầm Sơn và Cửa Lò (5 tỉnh/thành).",
+                provinces: [
+                    {
+                        name: "Thành phố Huế",
+                        isCentralCity: true,
+                        type: "Thành phố trực thuộc TW (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới TP. Huế trực thuộc Trung ương",
+                        adminCenter: "Phường Thuận Hóa & Phường Phú Xuân",
+                        image: PHOTO_BANK.hue_citadel,
+                        overview: "Thành phố Di sản trực thuộc Trung ương với Quần thể di tích Cố đô Huế, sông Hương thơ mộng, Cảng nước sâu Chân Mây - Vịnh Lăng Cô và các tuyến phố đêm sôi động.",
+                        units: [
+                            { name: "Phường Thuận Hóa", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.nightlife_street, spots: ["Phố Tây Phạm Ngũ Lão - Chu Văn An - Võ Thị Sáu", "Cầu Trường Tiền & Phố đi bộ Nguyễn Đình Chiểu", "Bến thuyền Tòa Khâm - Sông Hương"] },
+                            { name: "Phường Phú Xuân", type: "Phường (Trung tâm Di sản)", image: PHOTO_BANK.hue_citadel, spots: ["Đại Nội Huế (Hoàng Thành)", "Phố đêm Hoàng Thành Huế", "Chùa Thiên Mụ"] },
+                            { name: "Phường Hương Thủy & Hương Trà", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Lăng Minh Mạng, Lăng Khải Định, Lăng Tự Đức", "Làng hương Thủy Xuân", "Cầu ngói Thanh Toàn"] },
+                            { name: "Xã Chân Mây - Lăng Cô", type: "Xã", image: PHOTO_BANK.cruise_harbor, spots: ["Cảng tàu khách Quốc tế Chân Mây", "Vịnh Lăng Cô", "Đầm Lập An", "Vườn quốc gia Bạch Mã", "Hải Vân Quan"] }
+                        ],
+                        tourism: [
+                            { name: "Phố Tây Chu Văn An - Phạm Ngũ Lão, Phố đêm Hoàng Thành & Ca Huế sông Hương", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.nightlife_street, time: "18:00 - 02:00 sáng", desc: "Khu phố Tây nhộn nhịp bậc nhất Cố đô với các quán pub, bia Huda, trình diễn nghệ thuật đường phố và thuyền rồng nghe Ca Huế." },
+                            { name: "Cảng tàu du lịch Quốc tế Chân Mây, Vịnh Lăng Cô & Bến thuyền Tòa Khâm", category: "⚓ Cảng Biển & Du thuyền", kind: "scenic", image: PHOTO_BANK.cruise_harbor, time: "Cả ngày", desc: "Cảng biển nước sâu đón các siêu tàu du lịch 5 sao quốc tế cập bến khám phá miền Trung bên vịnh Lăng Cô tuyệt đẹp." },
+                            { name: "Quần thể Di tích Cố đô Huế (Đại Nội, Chùa Thiên Mụ & Hệ thống Lăng Tẩm)", category: "🏛️ Di sản Thế giới UNESCO", kind: "scenic", image: PHOTO_BANK.hue_citadel, time: "07:00 - 21:30", desc: "Kinh thành triều Nguyễn uy nghiêm cổ kính và đầm phá Tam Giang - Rú Chá." },
+                            { name: "Bún bò Huế, Cơm hến Cồn Hến, Bánh bèo - Nậm - Lọc & Chè Hẻm Huế", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.vn_food_pho, time: "Cả ngày", desc: "Kinh đô ẩm thực Việt Nam với hơn 1.700 món ăn cung đình và dân gian tinh tế." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Thanh Hóa",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới tỉnh Thanh Hóa",
+                        adminCenter: "Phường Hạc Thành",
+                        image: PHOTO_BANK.beach_resort,
+                        overview: "Trung tâm du lịch biển Sầm Sơn, Quảng trường biển Sun Grand Boulevard, Pù Luông và Cảng nước sâu Nghi Sơn.",
+                        units: [
+                            { name: "Phường Sầm Sơn & Hạc Thành", type: "Phường", image: PHOTO_BANK.beach_resort, spots: ["Quảng trường Biển Sầm Sơn & Nhạc nước", "Công viên nước Sun World Sầm Sơn", "Cảng Nghi Sơn", "Pù Luông"] }
+                        ],
+                        tourism: [
+                            { name: "Quảng trường Biển Sầm Sơn, Sun World & Phố đêm Sầm Sơn", category: "🎉 Ăn chơi & Giải trí Biển", kind: "nightlife", image: PHOTO_BANK.theme_park, time: "08:00 - 24:00", desc: "Trục quảng trường biển sôi động với show nhạc nước, carnival đường phố và công viên nước quy mô hàng đầu miền Bắc." },
+                            { name: "Khu bảo tồn Pù Luông, Di sản Thành Nhà Hồ & Cảng biển Nghi Sơn", category: "⚓ Danh thắng & Cảng biển", kind: "scenic", image: PHOTO_BANK.mountain_terrace, time: "Cả ngày", desc: "Nghỉ dưỡng giữa ruộng bậc thang Pù Luông và khám phá cảng biển công nghiệp - du lịch Nghi Sơn." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Nghệ An",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới tỉnh Nghệ An",
+                        adminCenter: "Phường Trường Vinh",
+                        image: PHOTO_BANK.beach_resort,
+                        overview: "Quê hương Chủ tịch Hồ Chí Minh với đô thị biển Cửa Lò, VinWonders Cửa Hội và Cảng quốc tế Cửa Lò.",
+                        units: [
+                            { name: "Phường Trường Vinh & Cửa Lò", type: "Phường", image: PHOTO_BANK.beach_resort, spots: ["VinWonders Cửa Hội & Cáp treo ra Đảo Ngư", "Cảng Cửa Lò", "Phố đi bộ Hồ Tùng Mậu", "Khu di tích Kim Liên"] }
+                        ],
+                        tourism: [
+                            { name: "Tổ hợp VinWonders Cửa Hội, Cáp treo vượt biển Đảo Ngư & Phố đêm Vinh", category: "🎉 Ăn chơi & Giải trí", kind: "nightlife", image: PHOTO_BANK.theme_park, time: "08:30 - 23:30", desc: "Cáp treo vượt biển ngắm toàn cảnh biển Cửa Lò, câu mực đêm và thưởng thức cháo lươn xứ Nghệ." },
+                            { name: "Cảng biển Quốc tế Cửa Lò, Đảo Lan Châu & Khu di tích Kim Liên", category: "⚓ Cảng Biển & Di tích", kind: "scenic", image: PHOTO_BANK.cruise_harbor, time: "Cả ngày", desc: "Cảng biển đầu mối Bắc Trung Bộ cùng quê hương Làng Sen - Hoàng Trù." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Hà Tĩnh",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Giữ nguyên địa giới tỉnh Hà Tĩnh",
+                        adminCenter: "Phường Thành Sen",
+                        image: PHOTO_BANK.beach_resort,
+                        overview: "Vùng đất biển Thiên Cầm, Chùa Hương Tích và cụm cảng nước sâu Vũng Áng - Sơn Dương.",
+                        units: [
+                            { name: "Phường Thành Sen & Xã Thiên Cầm", type: "Phường / Xã", image: PHOTO_BANK.beach_resort, spots: ["Biển Thiên Cầm", "Cảng nước sâu Vũng Áng", "Chùa Hương Tích", "Ngã ba Đồng Lộc"] }
+                        ],
+                        tourism: [
+                            { name: "Biển Thiên Cầm, Câu mực đêm Vũng Áng & Chùa Hương Tích", category: "⚓ Biển, Cảng & Danh thắng", kind: "scenic", image: PHOTO_BANK.beach_resort, time: "Cả ngày", desc: "Thưởng thức mực nhảy Vũng Áng tươi sống ngay tại các nhà bè ven cảng biển." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Quảng Trị",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Quảng Bình và tỉnh Quảng Trị",
+                        adminCenter: "Phường Đồng Hới",
+                        image: PHOTO_BANK.cave_adventure,
+                        overview: "Vương quốc hang động thế giới Phong Nha - Kẻ Bàng, Sơn Đoòng kết hợp phố biển Nhật Lệ, Bảo Ninh và Đặc khu Cồn Cỏ.",
+                        units: [
+                            { name: "Phường Đồng Hới & Xã Phong Nha", type: "Phường / Xã (Trung tâm)", image: PHOTO_BANK.cave_adventure, spots: ["Vườn quốc gia Phong Nha - Kẻ Bàng (Sơn Đoòng, Thiên Đường)", "Phố đi bộ đêm Bảo Ninh - Nhật Lệ", "Bến thuyền sông Son"] },
+                            { name: "Phường Đông Hà, Quảng Trị & Đặc khu Cồn Cỏ", type: "Phường / Đặc khu", image: PHOTO_BANK.island_aerial, spots: ["Cảng Cửa Việt - Đảo Cồn Cỏ", "Thành cổ Quảng Trị", "Địa đạo Vịnh Mốc"] }
+                        ],
+                        tourism: [
+                            { name: "Phố đêm Bảo Ninh (Regal Legend), East Hill Phong Nha & Zipline Sông Chày", category: "🎉 Ăn chơi & Giải trí", kind: "nightlife", image: PHOTO_BANK.beach_club, time: "08:00 - 24:00", desc: "Khu phố đi bộ ven biển Bảo Ninh rực rỡ sắc màu với beer club, nhạc nước và trò chơi mạo hiểm Sông Chày - Hang Tối." },
+                            { name: "Bến thuyền Phong Nha (Sông Son), Cảng Cửa Việt & Đặc khu Cồn Cỏ", category: "⚓ Bến thuyền & Kỳ quan", kind: "scenic", image: PHOTO_BANK.cave_adventure, time: "07:00 - 17:30", desc: "Đi thuyền ngược dòng sông Son vào Động Phong Nha và tàu cao tốc từ cảng Cửa Việt ra đảo tiền tiêu Cồn Cỏ." }
+                        ]
+                    }
+                ]
+            },
+            {
+                region: "Duyên hải Nam Trung Bộ và Tây Nguyên",
+                code: "DHNTB_TN",
+                image: PHOTO_BANK.danang_bridge,
+                description: "Thiên đường nghỉ dưỡng biển đảo, cảng du thuyền quốc tế và cao nguyên đại ngàn với TP. Đà Nẵng trực thuộc Trung ương và 5 tỉnh lớn.",
+                provinces: [
+                    {
+                        name: "Thành phố Đà Nẵng",
+                        isCentralCity: true,
+                        type: "Thành phố trực thuộc TW (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất TP. Đà Nẵng và tỉnh Quảng Nam",
+                        adminCenter: "Phường Hải Châu",
+                        image: PHOTO_BANK.danang_bridge,
+                        overview: "Thành phố trực thuộc Trung ương đáng sống bậc nhất châu Á, hội tụ Cầu Rồng, Bà Nà Hills, Cảng Tiên Sa, Bến du thuyền sông Hàn, Phố cổ Hội An, Mỹ Sơn và Đặc khu Hoàng Sa.",
+                        units: [
+                            { name: "Phường Hải Châu & Sơn Trà", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.danang_bridge, spots: ["Cầu Rồng (Phun lửa - Phun nước)", "Bến du thuyền Sông Hàn & Cầu Tình Yêu", "Cảng Tiên Sa", "Phố Tây An Thượng & Biển Mỹ Khê", "Chợ đêm Sơn Trà"] },
+                            { name: "Xã Bà Nà & Phường Ngũ Hành Sơn", type: "Xã / Phường", image: PHOTO_BANK.theme_park, spots: ["Sun World Ba Na Hills & Cầu Vàng", "Danh thắng Ngũ Hành Sơn", "Công viên Châu Á (Da Nang Downtown)"] },
+                            { name: "Phường Hội An & Xã đảo Tân Hiệp", type: "Phường / Xã", image: PHOTO_BANK.hoian_lantern, spots: ["Phố cổ Hội An về đêm", "Cảng du lịch Cửa Đại - Đảo Cù Lao Chàm", "Show Ký Ức Hội An", "Rừng dừa Bảy Mẫu"] },
+                            { name: "Xã Duy Xuyên & Phường Tam Kỳ", type: "Xã / Phường", image: PHOTO_BANK.temple_ancient, spots: ["Di sản Thánh địa Mỹ Sơn", "Khu nghỉ dưỡng Hoiana", "Cảng Chu Lai"] },
+                            { name: "Đặc khu Hoàng Sa", type: "Đặc khu biển đảo", image: PHOTO_BANK.island_aerial, spots: ["Quần đảo Hoàng Sa thiêng liêng", "Nhà trưng bày Hoàng Sa"] }
+                        ],
+                        tourism: [
+                            { name: "Du thuyền Sông Hàn xem Cầu Rồng phun lửa, Phố Tây An Thượng & Da Nang Downtown", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.danang_bridge, time: "18:00 - 02:00 sáng", desc: "Lên du thuyền từ Bến Sông Hàn ngắm pháo hoa & Cầu Rồng phun lửa, vui chơi tại chợ đêm Sơn Trà, Sky36 Bar và khu phố Tây An Thượng." },
+                            { name: "Phố đêm Đèn lồng Hội An, Show Ký Ức Hội An & Sun World Bà Nà Hills", category: "🎉 Giải trí & Văn hóa", kind: "nightlife", image: PHOTO_BANK.hoian_lantern, time: "08:00 - 22:30", desc: "Thả hoa đăng trên sông Hoài, xem show thực cảnh lớn nhất Việt Nam và check-in Cầu Vàng trên đỉnh Bà Nà." },
+                            { name: "Cảng tàu khách Quốc tế Tiên Sa, Bến du thuyền Marina & Cảng Cửa Đại", category: "⚓ Cảng Biển & Du thuyền", kind: "scenic", image: PHOTO_BANK.yacht_marina, time: "Cả ngày", desc: "Cảng nước sâu Tiên Sa đón tàu biển quốc tế 5 sao, bến du thuyền Cá Chép Hóa Rồng và cảng cano cao tốc đi Cù Lao Chàm." },
+                            { name: "Mì Quảng, Cao lầu Hội An, Bánh tráng cuốn thịt heo & Hải sản Mỹ Khê", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.seafood_feast, time: "Cả ngày", desc: "Thiên đường hải sản tươi sống dọc đường Võ Nguyên Giáp và ẩm thực phố cổ Hội An." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Khánh Hòa",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Khánh Hòa và tỉnh Ninh Thuận",
+                        adminCenter: "Phường Nha Trang",
+                        image: PHOTO_BANK.yacht_marina,
+                        overview: "Thủ phủ du lịch biển đảo và du thuyền quốc tế với Vịnh Nha Trang, Bến du thuyền Ana Marina, VinWonders Hòn Tre, Vịnh Vĩnh Hy và Đặc khu Trường Sa.",
+                        units: [
+                            { name: "Phường Nha Trang", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.yacht_marina, spots: ["Bến du thuyền Quốc tế Ana Marina", "VinWonders Nha Trang & Vinpearl Harbour", "Cảng Cầu Đá", "Sailing Club & Skylight Nha Trang"] },
+                            { name: "Phường Cam Ranh & Xã Vĩnh Hải", type: "Phường / Xã", image: PHOTO_BANK.beach_resort, spots: ["Cảng Quốc tế Cam Ranh", "Vịnh Vĩnh Hy & Hang Rái", "Bãi Dài Cam Ranh"] },
+                            { name: "Phường Phan Rang - Tháp Chàm", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Tháp Po Klong Garai", "Đồi cát Nam Cương", "Vườn nho Thái An"] },
+                            { name: "Đặc khu Trường Sa", type: "Đặc khu biển đảo", image: PHOTO_BANK.island_aerial, spots: ["Quần đảo Trường Sa", "Âu tàu Đảo Trường Sa Lớn, Sinh Tồn, Song Tử Tây"] }
+                        ],
+                        tourism: [
+                            { name: "Khu phố thương mại Vinpearl Harbour, Sailing Club & Skylight Rooftop Bar", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.beach_club, time: "09:00 - 02:00 sáng", desc: "Tổ hợp ăn chơi 24/7 trên đảo Hòn Tre với Stunt Show trên biển, chợ đêm Harbour Market và tiệc DJ bên bãi biển Sailing Club." },
+                            { name: "Bến du thuyền Quốc tế Ana Marina Nha Trang, Cảng Cam Ranh & Vịnh Vĩnh Hy", category: "⚓ Bến Du thuyền & Cảng", kind: "scenic", image: PHOTO_BANK.yacht_marina, time: "07:00 - 22:00", desc: "Bến du thuyền chuẩn quốc tế đầu tiên tại Việt Nam nơi neo đậu hàng chục du thuyền sang trọng ngắm hoàng hôn Vịnh Nha Trang." },
+                            { name: "Tôm hùm Bình Ba, Bún cá sứa Nha Trang, Nem nướng Ninh Hòa & Cừu Phan Rang", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.seafood_feast, time: "Cả ngày", desc: "Thưởng thức đại tiệc tôm hùm, nhum biển nướng mỡ hành và nho rượu vang Ninh Thuận." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Lâm Đồng",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất 3 tỉnh: Lâm Đồng, Bình Thuận và Đắk Nông",
+                        adminCenter: "Phường Xuân Hương - Đà Lạt",
+                        image: PHOTO_BANK.dalat_pine,
+                        overview: "Tỉnh có diện tích lớn nhất cả nước, kết nối thành phố ngàn hoa Đà Lạt, thiên đường resort Mũi Né - Cảng Phan Thiết - Đặc khu Phú Quý và Hồ Tà Đùng.",
+                        units: [
+                            { name: "Phường Xuân Hương - Đà Lạt", type: "Phường (Trung tâm)", image: PHOTO_BANK.dalat_pine, spots: ["Chợ đêm Đà Lạt (Chợ Âm Phủ)", "Quảng trường Lâm Viên", "Hồ Xuân Hương", "Lululola & Mây Lang Thang Acoustic"] },
+                            { name: "Phường Phan Thiết & Mũi Né", type: "Phường biển", image: PHOTO_BANK.beach_club, spots: ["Cảng tàu Phan Thiết (Đi Phú Quý)", "Hanna Beach Club Mũi Né", "Bàu Trắng - Đồi Cát Bay", "NovaWorld Phan Thiết"] },
+                            { name: "Đặc khu Phú Quý & Xã Tà Đùng", type: "Đặc khu / Xã", image: PHOTO_BANK.island_aerial, spots: ["Cảng Phú Quý - Gành Hang", "Bến thuyền Hồ Tà Đùng"] }
+                        ],
+                        tourism: [
+                            { name: "Chợ đêm Đà Lạt, Show nhạc Mây Lang Thang & Hanna Beach Club Mũi Né", category: "🎉 Ăn chơi & Chill", kind: "nightlife", image: PHOTO_BANK.coffee_chill, time: "16:00 - 23:30", desc: "Nghe nhạc live giữa sương mù Đà Lạt, uống sữa đậu nành nóng chợ đêm hoặc chill bên bờ biển Mũi Né phong cách Âu Mỹ." },
+                            { name: "Cảng vận tải Phan Thiết - Đặc khu Đảo Phú Quý & Bến thuyền Hồ Tà Đùng", category: "⚓ Cảng Đảo & Danh thắng", kind: "scenic", image: PHOTO_BANK.island_aerial, time: "Cả ngày", desc: "Đi tàu cao tốc từ cảng Phan Thiết ra đảo Phú Quý lặn ngắm san hô và ngắm 'Vịnh Hạ Long trên Tây Nguyên' Tà Đùng." },
+                            { name: "Lẩu gà lá é, Bánh căn Đà Lạt, Dâu tây & Lẩu thả - Hải sản Phan Thiết", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.street_food, time: "Cả ngày", desc: "Thưởng thức bánh tráng nướng Đà Lạt và cua Huỳnh Đế đảo Phú Quý." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Gia Lai",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Gia Lai và tỉnh Bình Định",
+                        adminCenter: "Phường Quy Nhơn",
+                        image: PHOTO_BANK.beach_resort,
+                        overview: "Kết nối thành phố biển Quy Nhơn - Cảng Quy Nhơn - Kỳ Co Eo Gió với Biển Hồ Pleiku và núi lửa Chư Đăng Ya.",
+                        units: [
+                            { name: "Phường Quy Nhơn & Xã Nhơn Lý", type: "Phường / Xã (Trung tâm)", image: PHOTO_BANK.beach_resort, spots: ["Cảng biển Quốc tế Quy Nhơn", "Kỳ Co - Eo Gió", "Surf Bar Quy Nhơn", "Phố ẩm thực Ngô Văn Sở"] },
+                            { name: "Phường Pleiku", type: "Phường cao nguyên", image: PHOTO_BANK.mountain_terrace, spots: ["Biển Hồ Pleiku", "Núi lửa Chư Đăng Ya", "Quảng trường Đại Đoàn Kết"] }
+                        ],
+                        tourism: [
+                            { name: "Surf Bar bãi biển Quy Nhơn, Chợ đêm Quy Nhơn & Phố ốc Ngọc Hân Công Chúa", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.beach_club, time: "17:00 - 23:30", desc: "Quán bar/cafe lãng mạn ngay trên bãi cát biển Quy Nhơn và những con phố hải sản sầm uất về đêm." },
+                            { name: "Cảng biển Quy Nhơn, Bến cano Nhơn Lý đi Kỳ Co - Eo Gió & Biển Hồ Pleiku", category: "⚓ Cảng Biển & Danh thắng", kind: "scenic", image: PHOTO_BANK.cruise_harbor, time: "Cả ngày", desc: "Cảng biển lớn của Nam Trung Bộ kết hợp thiên đường biển đảo Kỳ Co và Đôi mắt Pleiku." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Quảng Ngãi",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Quảng Ngãi và tỉnh Kon Tum",
+                        adminCenter: "Phường Cẩm Thành",
+                        image: PHOTO_BANK.island_aerial,
+                        overview: "Hành lang từ Cảng Sa Kỳ - Đặc khu Đảo Lý Sơn, cảng nước sâu Dung Quất lên cao nguyên sinh thái Măng Đen.",
+                        units: [
+                            { name: "Đặc khu Lý Sơn & Cảng Sa Kỳ", type: "Đặc khu", image: PHOTO_BANK.island_aerial, spots: ["Cảng Sa Kỳ - Cảng Lý Sơn", "Cổng Tò Vò", "Đảo Bé An Bình", "Cảng Dung Quất"] },
+                            { name: "Xã Măng Đen & Phường Kon Tum", type: "Xã / Phường", image: PHOTO_BANK.dalat_pine, spots: ["Chợ phiên & Phố đêm Măng Đen", "Thác Pa Sỹ", "Nhà thờ Gỗ Kon Tum"] }
+                        ],
+                        tourism: [
+                            { name: "Cảng tàu Sa Kỳ - Đặc khu Đảo Lý Sơn & Cảng nước sâu Dung Quất", category: "⚓ Cảng Biển & Hải đảo", kind: "scenic", image: PHOTO_BANK.island_aerial, time: "06:30 - 18:00", desc: "Bến cảng tấp nập đưa du khách ra vương quốc tỏi Lý Sơn ngắm miệng núi lửa triệu năm." },
+                            { name: "Phố đêm Măng Đen, Glamping săn mây & Thưởng thức Gà nướng cơm lam", category: "🎉 Ăn chơi & Nghỉ dưỡng", kind: "nightlife", image: PHOTO_BANK.dalat_pine, time: "17:00 - 23:00", desc: "Cắm trại dưới rừng thông Măng Đen se lạnh và thưởng thức lẩu xuyên tiêu." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Đắk Lắk",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Đắk Lắk và tỉnh Phú Yên",
+                        adminCenter: "Phường Buôn Ma Thuột",
+                        image: PHOTO_BANK.coffee_chill,
+                        overview: "Thủ phủ Cà phê thế giới Buôn Ma Thuột giao hòa với Gành Đá Đĩa, Tháp Nghinh Phong và Cảng Vũng Rô.",
+                        units: [
+                            { name: "Phường Buôn Ma Thuột", type: "Phường (Trung tâm)", image: PHOTO_BANK.coffee_chill, spots: ["Bảo tàng Thế giới Cà phê", "Phố cà phê & Chợ đêm Buôn Ma Thuột", "Khu du lịch Buôn Đôn"] },
+                            { name: "Phường Tuy Hòa & Xã An Ninh Đông", type: "Phường / Xã", image: PHOTO_BANK.beach_resort, spots: ["Tháp Nghinh Phong (Show ánh sáng đêm)", "Gành Đá Đĩa", "Cảng Vũng Rô - Mũi Điện"] }
+                        ],
+                        tourism: [
+                            { name: "Quảng trường Tháp Nghinh Phong về đêm & Đường sách Cà phê Buôn Ma Thuột", category: "🎉 Ăn chơi & Check-in", kind: "nightlife", image: PHOTO_BANK.saigon_night, time: "17:00 - 23:00", desc: "Show trình diễn ánh sáng 3D Mapping & Laser tại cột đá Tháp Nghinh Phong bên bờ biển Tuy Hòa." },
+                            { name: "Kỳ quan Gành Đá Đĩa, Mũi Điện & Cảng lịch sử Vũng Rô", category: "⚓ Cảng Biển & Kỳ quan", kind: "scenic", image: PHOTO_BANK.beach_resort, time: "Cả ngày", desc: "Vịnh cảng nước sâu Vũng Rô gắn với huyền thoại Tàu Không số và mắt cá ngừ đại dương Phú Yên." }
+                        ]
+                    }
+                ]
+            },
+            {
+                region: "Đông Nam Bộ",
+                code: "DNB",
+                image: PHOTO_BANK.saigon_night,
+                description: "Đầu tàu kinh tế - tài chính - cảng biển quốc tế sôi động nhất cả nước với siêu đô thị TP. Hồ Chí Minh trực thuộc TW và 2 tỉnh Đồng Nai, Tây Ninh.",
+                provinces: [
+                    {
+                        name: "Thành phố Hồ Chí Minh",
+                        isCentralCity: true,
+                        type: "Thành phố trực thuộc TW (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất 3 địa phương: TP. Hồ Chí Minh, tỉnh Bình Dương và tỉnh Bà Rịa - Vũng Tàu",
+                        adminCenter: "Phường Sài Gòn (Quận 1 cũ)",
+                        image: PHOTO_BANK.saigon_night,
+                        overview: "Siêu đô thị lớn nhất Việt Nam, trung tâm tài chính - cảng biển quốc tế (Bến Bạch Đằng, Cảng Sài Gòn, Cái Mép - Thị Vải), thành phố không ngủ với Bùi Viện, Nguyễn Huệ, Landmark 81, biển Vũng Tàu - Hồ Tràm và Đặc khu Côn Đảo.",
+                        units: [
+                            { name: "Phường Sài Gòn & Bến Thành", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.saigon_night, spots: ["Phố đi bộ Nguyễn Huệ & Bến Bạch Đằng", "Phố Tây Bùi Viện", "Dinh Độc Lập & Nhà thờ Đức Bà", "Chợ Bến Thành", "Cảng Sài Gòn - Nhà Rồng"] },
+                            { name: "Phường Thủ Đức & Thạnh Mỹ Tây", type: "Phường", image: PHOTO_BANK.saigon_night, spots: ["Tòa tháp Landmark 81 SkyView", "Công viên Bờ sông Sài Gòn", "Khu thảo điền Nightlife", "Suối Tiên"] },
+                            { name: "Phường Vũng Tàu & Xã Hồ Tràm", type: "Phường / Xã biển", image: PHOTO_BANK.beach_resort, spots: ["Bãi Sau - Bãi Trước Vũng Tàu", "Cảng tàu cao tốc Cầu Đá & Cảng Cái Mép - Thị Vải", "Tượng Chúa Kitô Vua", "The Grand Hồ Tràm"] },
+                            { name: "Phường Thủ Dầu Một", type: "Phường", image: PHOTO_BANK.theme_park, spots: ["Phố đi bộ Bạch Đằng bên sông Sài Gòn", "Khu du lịch Đại Nam", "Chùa Bà Thiên Hậu"] },
+                            { name: "Xã Củ Chi & Cần Giờ", type: "Xã", image: PHOTO_BANK.cruise_harbor, spots: ["Địa đạo Củ Chi", "Khu dự trữ sinh quyển Cần Giờ & Siêu cảng Cần Giờ"] },
+                            { name: "Đặc khu Côn Đảo", type: "Đặc khu biển đảo", image: PHOTO_BANK.island_aerial, spots: ["Cảng tàu khách Côn Đảo & Cảng Bến Đầm", "Vườn quốc gia Côn Đảo", "Khu di tích Côn Đảo", "Bãi Đầm Trầu"] }
+                        ],
+                        tourism: [
+                            { name: "Phố đi bộ Nguyễn Huệ, Phố Tây Bùi Viện, Thảo Điền & Landmark 81 SkyBar", category: "🎉 Ăn chơi & Nightlife 24/7", kind: "nightlife", image: PHOTO_BANK.saigon_night, time: "18:00 - 04:00 sáng", desc: "Thành phố không ngủ với du thuyền ăn tối sông Sài Gòn, xe buýt 2 tầng ngắm cảnh đêm, rooftop bar tầng 75 Landmark 81 và lễ hội âm nhạc Bùi Viện." },
+                            { name: "Bến Bạch Đằng, Cảng Nhà Rồng, Cụm cảng nước sâu Cái Mép - Thị Vải & Bến Marina Vũng Tàu", category: "⚓ Cảng Quốc tế & Bến Du thuyền", kind: "scenic", image: PHOTO_BANK.yacht_marina, time: "06:00 - 23:00", desc: "Hệ thống cảng biển nước sâu thuộc Top thế giới kết hợp bến tàu thủy Waterbus Bạch Đằng và bến du thuyền Vũng Tàu Marina." },
+                            { name: "Biển Vũng Tàu, Tổ hợp giải trí Hồ Tràm & Đặc khu Côn Đảo", category: "🏖️ Biển đảo & Nghỉ dưỡng", kind: "scenic", image: PHOTO_BANK.island_aerial, time: "Cả ngày", desc: "Thiên đường nghỉ dưỡng cuối tuần với công viên biển Bãi Sau, suối khoáng nóng Bình Châu và đảo ngọc Côn Đảo hoang sơ." },
+                            { name: "Phố ẩm thực Hồ Thị Kỷ, Cơm tấm Sài Gòn, Hủ tiếu & Bánh khọt - Hải sản Vũng Tàu", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.street_food, time: "15:00 - 02:00 sáng", desc: "Hàng trăm món ngon đường phố tại chợ đêm Hồ Thị Kỷ, phố Vĩnh Khánh và lẩu cá đuối Vũng Tàu." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Đồng Nai",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Đồng Nai và tỉnh Bình Phước",
+                        adminCenter: "Phường Trấn Biên",
+                        image: PHOTO_BANK.theme_park,
+                        overview: "Cửa ngõ Siêu sân bay Quốc tế Long Thành, Cảng Phước An, Khu du lịch Sơn Tiên và Vườn quốc gia Cát Tiên.",
+                        units: [
+                            { name: "Phường Trấn Biên & Xã Trị An", type: "Phường / Xã", image: PHOTO_BANK.theme_park, spots: ["Siêu công viên nước The Amazing Bay (Sơn Tiên)", "Glamping Hồ Trị An", "Vườn quốc gia Cát Tiên", "Cảng Phước An"] }
+                        ],
+                        tourism: [
+                            { name: "Công viên nước Vịnh Kỳ Diệu (Sơn Tiên) & Glamping săn mây Hồ Trị An", category: "🎉 Ăn chơi & Cắm trại", kind: "nightlife", image: PHOTO_BANK.theme_park, time: "08:00 - 22:00", desc: "Công viên nước lớn nhất Việt Nam với biển nhân tạo sóng thần cao 4m và khu cắm trại ven hồ Trị An." },
+                            { name: "Tour xem thú đêm Vườn quốc gia Cát Tiên & Bến thuyền Đảo Ó", category: "⚓ Sinh thái & Bến hồ", kind: "scenic", image: PHOTO_BANK.island_aerial, time: "07:00 - 21:00", desc: "Trải nghiệm xe mui trần xuyên rừng nguyên sinh Cát Tiên vào ban đêm." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Tây Ninh",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Tây Ninh và tỉnh Long An",
+                        adminCenter: "Phường Long An & Phường Tây Ninh",
+                        image: PHOTO_BANK.temple_ancient,
+                        overview: "Hội tụ 'Nóc nhà Nam Bộ' Núi Bà Đen, Tòa Thánh Cao Đài, Làng nổi Tân Lập và Cảng Quốc tế Long An.",
+                        units: [
+                            { name: "Phường Tây Ninh & Ninh Sơn", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Khu du lịch Sun World Ba Den Mountain", "Tòa Thánh Cao Đài", "Hồ Dầu Tiếng"] },
+                            { name: "Phường Long An & Xã Cần Giuộc", type: "Phường / Xã", image: PHOTO_BANK.container_port, spots: ["Cảng Quốc tế Long An", "Làng nổi Tân Lập"] }
+                        ],
+                        tourism: [
+                            { name: "Show nhạc nước & Lễ dâng đăng đêm trên đỉnh Núi Bà Đen (986m)", category: "🎉 Trải nghiệm Đêm & Tâm linh", kind: "nightlife", image: PHOTO_BANK.temple_ancient, time: "06:00 - 22:00", desc: "Đi cáp treo lên đỉnh núi cao nhất Nam Bộ ngắm biển mây và trình diễn nhạc nước dưới chân tượng Phật Di Lặc." },
+                            { name: "Cảng Quốc tế Long An (Cửa sông Soài Rạp) & Làng nổi Tân Lập", category: "⚓ Cảng Biển & Sinh thái", kind: "scenic", image: PHOTO_BANK.container_port, time: "Cả ngày", desc: "Cảng biển lớn cửa ngõ miền Tây và cung đường xuyên rừng tràm ngập nước." }
+                        ]
+                    }
+                ]
+            },
+            {
+                region: "Đồng bằng sông Cửu Long",
+                code: "DBSCL",
+                image: PHOTO_BANK.mekong_floating,
+                description: "Miền Tây sông nước miệt vườn và biển đảo Tây Nam với TP. Cần Thơ trực thuộc TW, Đặc khu Phú Quốc (An Giang) và cực Nam Cà Mau (5 tỉnh/thành).",
+                provinces: [
+                    {
+                        name: "Thành phố Cần Thơ",
+                        isCentralCity: true,
+                        type: "Thành phố trực thuộc TW (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất 3 địa phương: TP. Cần Thơ, tỉnh Sóc Trăng và tỉnh Hậu Giang",
+                        adminCenter: "Phường Ninh Kiều",
+                        image: PHOTO_BANK.mekong_floating,
+                        overview: "Thủ phủ Tây Đô trực thuộc Trung ương vươn thẳng ra biển Đông với Bến Ninh Kiều, Chợ nổi Cái Răng, Cảng Cái Cui, Cảng Trần Đề (đi Côn Đảo) và quần thể chùa Khmer Sóc Trăng.",
+                        units: [
+                            { name: "Phường Ninh Kiều & Cái Răng", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.mekong_floating, spots: ["Bến Ninh Kiều & Du thuyền sông Hậu", "Chợ nổi Cái Răng", "Phố đi bộ Ninh Kiều & Cầu Tình Yêu", "Cảng Quốc tế Cái Cui"] },
+                            { name: "Phường Bình Thủy & Xã Phong Điền", type: "Phường / Xã", image: PHOTO_BANK.temple_ancient, spots: ["Nhà cổ Bình Thủy", "Làng du lịch Cồn Sơn (Cá lóc bay)", "Thiền viện Trúc Lâm Phương Nam"] },
+                            { name: "Phường Sóc Trăng & Xã Trần Đề", type: "Phường / Xã", image: PHOTO_BANK.temple_ancient, spots: ["Chùa Som Rong", "Chùa Dơi", "Cảng tàu cao tốc Trần Đề (Đi Côn Đảo)", "Chợ nổi Ngã Năm"] },
+                            { name: "Phường Vị Thanh & Xã Phụng Hiệp", type: "Phường / Xã", image: PHOTO_BANK.island_aerial, spots: ["Kênh xáng Xà No", "Khu bảo tồn Lung Ngọc Hoàng"] }
+                        ],
+                        tourism: [
+                            { name: "Du thuyền Đêm Bến Ninh Kiều, Phố đi bộ Hai Bà Trưng & Chợ đêm Tây Đô", category: "🎉 Ăn chơi & Nightlife", kind: "nightlife", image: PHOTO_BANK.saigon_night, time: "18:00 - 23:30", desc: "Thưởng thức bữa tối trên du thuyền 5 sao sông Hậu, nghe đờn ca tài tử và dạo cầu đi bộ Ninh Kiều rực rỡ ánh đèn LED." },
+                            { name: "Bến tàu Chợ nổi Cái Răng, Cảng Cái Cui & Cảng tàu cao tốc Trần Đề", category: "⚓ Bến Cảng & Chợ nổi", kind: "scenic", image: PHOTO_BANK.mekong_floating, time: "05:00 - 18:00", desc: "Trải nghiệm ăn sáng bún riêu, uống cà phê kho trên ghe tại Chợ nổi Cái Răng lúc bình minh và cảng biển cửa ngõ Trần Đề." },
+                            { name: "Chùa Som Rong (Tượng Phật nằm khổng lồ), Nhà cổ Bình Thủy & Cồn Sơn", category: "🏛️ Văn hóa & Sinh thái", kind: "scenic", image: PHOTO_BANK.temple_ancient, time: "07:00 - 21:00", desc: "Ngôi chùa Khmer đẹp lung linh về đêm tại Sóc Trăng và trải nghiệm làm bánh dân gian tại Cồn Sơn." },
+                            { name: "Lẩu mắm Cần Thơ, Vịt nấu chao, Bánh cống & Bún nước lèo Sóc Trăng", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.seafood_feast, time: "Cả ngày", desc: "Thiên đường ẩm thực miền Tây tại hẻm Thành Nội, đường Đề Thám và bánh pía Sóc Trăng." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh An Giang",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh An Giang và tỉnh Kiên Giang",
+                        adminCenter: "Phường Rạch Giá",
+                        image: PHOTO_BANK.beach_club,
+                        overview: "Siêu thủ phủ du lịch biển đảo & tâm linh Tây Nam Bộ với Đặc khu Đảo ngọc Phú Quốc, Đặc khu Kiên Hải (Nam Du - Hòn Sơn), Cảng Rạch Giá, Hà Tiên và Núi Sam Châu Đốc.",
+                        units: [
+                            { name: "Đặc khu Phú Quốc", type: "Đặc khu biển đảo quốc tế", image: PHOTO_BANK.beach_club, spots: ["Thị trấn Hoàng Hôn (Sunset Town) & Cầu Hôn", "Grand World Phú Quốc (Thành phố không ngủ)", "Cảng hành khách Quốc tế Phú Quốc", "Cáp treo Hòn Thơm", "Chợ đêm VUI-Fest & Dương Đông"] },
+                            { name: "Phường Rạch Giá & Hà Tiên", type: "Phường (Trung tâm hành chính)", image: PHOTO_BANK.yacht_marina, spots: ["Cảng tàu cao tốc Rạch Giá", "Khu đô thị lấn biển Phú Cường", "Chợ đêm Hà Tiên"] },
+                            { name: "Đặc khu Kiên Hải & Thổ Châu", type: "Đặc khu biển đảo", image: PHOTO_BANK.island_aerial, spots: ["Quần đảo Nam Du", "Đảo Hòn Sơn", "Quần đảo Thổ Chu"] },
+                            { name: "Phường Châu Đốc & Xã Tri Tôn", type: "Phường / Xã", image: PHOTO_BANK.ninhbinh_river, spots: ["Miếu Bà Chúa Xứ Núi Sam", "Rừng tràm Trà Sư", "Núi Cấm"] }
+                        ],
+                        tourism: [
+                            { name: "Thị trấn Hoàng Hôn (Show Kiss of The Sea), Grand World Phú Quốc & Chợ đêm VUI-Fest", category: "🎉 Ăn chơi & Nightlife Đảo Ngọc", kind: "nightlife", image: PHOTO_BANK.beach_club, time: "Cả ngày & Đêm 24/7", desc: "Xem pháo hoa nghệ thuật hàng đêm tại Cầu Hôn (Kiss Bridge), dạo dòng sông Venice Grand World và beach club Bãi Trường." },
+                            { name: "Cảng Hành khách Quốc tế Phú Quốc, Cảng An Thới & Cảng tàu cao tốc Rạch Giá", category: "⚓ Cảng Du thuyền & Đảo", kind: "scenic", image: PHOTO_BANK.yacht_marina, time: "06:00 - 21:00", desc: "Bến cảng đón siêu tàu biển quốc tế 5 sao và đầu mối tàu cao tốc đi Phú Quốc, Nam Du, Hòn Sơn." },
+                            { name: "Rừng tràm Trà Sư, Miếu Bà Chúa Xứ Núi Sam & Cáp treo Hòn Thơm", category: "🏛️ Danh thắng & Tâm linh", kind: "scenic", image: PHOTO_BANK.ninhbinh_river, time: "07:00 - 18:00", desc: "Rừng tràm ngập nước xanh mướt mùa nước nổi và tuyến cáp treo 3 dây vượt biển dài nhất thế giới." },
+                            { name: "Bún quậy Kiến Xây, Gỏi cá trích Phú Quốc, Bún cá Châu Đốc & Lẩu mắm", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.seafood_feast, time: "Cả ngày", desc: "Đặc sản hải sản tươi sống Hàm Ninh, ghẹ Phú Quốc và bò bảy món Núi Sam." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Đồng Tháp",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Đồng Tháp và tỉnh Tiền Giang",
+                        adminCenter: "Phường Mỹ Tho & Phường Cao Lãnh",
+                        image: PHOTO_BANK.mekong_floating,
+                        overview: "Kết nối Cảng du thuyền sông Tiền (Mỹ Tho - Cù lao Thới Sơn) với Làng hoa Sa Đéc và Vườn quốc gia Tràm Chim.",
+                        units: [
+                            { name: "Phường Mỹ Tho & Xã Thới Sơn", type: "Phường / Xã (Trung tâm)", image: PHOTO_BANK.cruise_harbor, spots: ["Cảng Du thuyền Mỹ Tho", "Cù lao Thới Sơn", "Chùa Vĩnh Tràng"] },
+                            { name: "Phường Sa Đéc & Xã Tràm Chim", type: "Phường / Xã", image: PHOTO_BANK.mekong_floating, spots: ["Làng hoa Sa Đéc", "Nhà cổ Huỳnh Thủy Lê", "Vườn quốc gia Tràm Chim"] }
+                        ],
+                        tourism: [
+                            { name: "Cảng Du thuyền Sông Tiền (Mỹ Tho), Cù lao Thới Sơn & Làng hoa Sa Đéc", category: "⚓ Bến Du thuyền & Miệt vườn", kind: "scenic", image: PHOTO_BANK.cruise_harbor, time: "07:00 - 21:00", desc: "Bến cảng du thuyền quốc tế trên sông Tiền đưa du khách đi xuồng ba lá dưới rạch dừa nước và ngắm ngàn sắc hoa Sa Đéc." },
+                            { name: "Hủ tiếu Mỹ Tho, Hủ tiếu Sa Đéc, Cá lóc nướng trui cuốn lá sen non", category: "🍜 Ẩm thực đặc sản", kind: "food", image: PHOTO_BANK.vn_food_pho, time: "Cả ngày", desc: "Hai thương hiệu hủ tiếu lừng danh nhất miền Tây Nam Bộ." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Vĩnh Long",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất 3 tỉnh: Vĩnh Long, Bến Tre và Trà Vinh",
+                        adminCenter: "Phường Long Châu",
+                        image: PHOTO_BANK.mekong_floating,
+                        overview: "Vương quốc gạch gốm Đỏ Mang Thít, Xứ Dừa Bến Tre (Cồn Phụng) và danh thắng Ao Bà Om Trà Vinh.",
+                        units: [
+                            { name: "Phường Long Châu & Xã Mang Thít", type: "Phường / Xã", image: PHOTO_BANK.mekong_floating, spots: ["Bến tàu du lịch Vĩnh Long - Cù lao An Bình", "Di sản lò gạch Mang Thít"] },
+                            { name: "Phường Bến Tre & Phường Trà Vinh", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Khu du lịch Cồn Phụng - Lan Vương", "Ao Bà Om & Chùa Âng", "Cảng Định An - Điện gió Duyên Hải"] }
+                        ],
+                        tourism: [
+                            { name: "Khu vui chơi sông nước Lan Vương, Cồn Phụng & Di sản Lò gạch Mang Thít", category: "🎉 Ăn chơi Sông nước", kind: "nightlife", image: PHOTO_BANK.mekong_floating, time: "07:30 - 21:00", desc: "Mặc đồ bà ba tát mương bắt cá, đu dây văng qua sông, chèo xuồng và ngắm hàng ngàn lò gạch cổ bên sông Cổ Chiên." }
+                        ]
+                    },
+                    {
+                        name: "Tỉnh Cà Mau",
+                        isCentralCity: false,
+                        type: "Tỉnh (Cấp Tỉnh)",
+                        mergedFrom: "Hợp nhất tỉnh Cà Mau và tỉnh Bạc Liêu",
+                        adminCenter: "Phường Tân Thành",
+                        image: PHOTO_BANK.island_aerial,
+                        overview: "Đất Mũi cực Nam Tổ quốc, Siêu cảng nước sâu Hòn Khoai, Vườn quốc gia U Minh Hạ và Nhà Công tử Bạc Liêu - Cánh đồng điện gió.",
+                        units: [
+                            { name: "Phường Tân Thành & Xã Đất Mũi", type: "Phường / Xã (Trung tâm)", image: PHOTO_BANK.island_aerial, spots: ["Khu du lịch Mũi Cà Mau (Mốc GPS 0001)", "Cảng tổng hợp Hòn Khoai", "Rừng U Minh Hạ"] },
+                            { name: "Phường Bạc Liêu", type: "Phường", image: PHOTO_BANK.temple_ancient, spots: ["Nhà Công tử Bạc Liêu", "Cánh đồng Điện gió Bạc Liêu", "Quảng trường Hùng Vương", "Chùa Xiêm Cán"] }
+                        ],
+                        tourism: [
+                            { name: "Cột mốc Cực Nam Mũi Cà Mau, Cảng đảo Hòn Khoai & Cánh đồng Điện gió Bạc Liêu", category: "⚓ Cảng Biển & Cực Nam", kind: "scenic", image: PHOTO_BANK.island_aerial, time: "06:00 - 21:00", desc: "Chinh phục điểm cực Nam thiêng liêng của Tổ quốc, đi vỏ lãi xuyên rừng đước và check-in tuabin gió trên biển." },
+                            { name: "Nhà Công tử Bạc Liêu, Quảng trường Đờn Kìm & Chợ đêm Cua Cà Mau", category: "🎉 Ăn chơi & Ẩm thực", kind: "food", image: PHOTO_BANK.seafood_feast, time: "08:00 - 23:00", desc: "Thưởng thức cua biển Năm Căn trứ danh, lẩu mắm U Minh và nghe Đờn ca tài tử." }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        // ============================================================================
+        // 3. DỮ LIỆU 63 TỈNH/THÀNH PHỐ TRUYỀN THỐNG (ĐÃ CẬP NHẬT 8 TP TRỰC THUỘC TW)
+        // ============================================================================
+        const DATA_63_REGIONS = [
+            {
+                region: "Đồng bằng sông Hồng (10 tỉnh/thành - 4 TP TW)",
+                provinces: [
+                    { name: "TP. Hà Nội", isCentral: true, center: "Quận Hoàn Kiếm", image: PHOTO_BANK.hanoi_city, districts: ["Quận Hoàn Kiếm", "Quận Ba Đình", "Quận Tây Hồ", "TX. Sơn Tây", "Huyện Đông Anh", "Huyện Gia Lâm"], spots: ["Phố bia Tạ Hiện & Phố đi bộ Hồ Gươm", "Lăng Bác - Hoàng thành Thăng Long", "Bến du thuyền Sông Hồng - Bát Tràng", "Lotte Mall Hồ Tây"] },
+                    { name: "TP. Bắc Ninh", isCentral: true, center: "Quận Kinh Bắc / Từ Sơn", image: PHOTO_BANK.temple_ancient, districts: ["Quận Kinh Bắc (TP. Bắc Ninh)", "Quận Từ Sơn", "TX. Thuận Thành", "TX. Quế Võ", "Huyện Tiên Du", "Huyện Yên Phong"], spots: ["Phố đêm Hàn - Trung Kinh Bắc", "Đền Đô - Chùa Phật Tích", "Chùa Bút Tháp - Chùa Dâu", "Hát Quan họ thuyền đêm"] },
+                    { name: "TP. Hải Phòng", isCentral: true, center: "Q. Hồng Bàng / TP. Thủy Nguyên", image: PHOTO_BANK.container_port, districts: ["TP. Thủy Nguyên", "Quận Hồng Bàng", "Quận Đồ Sơn", "Huyện đảo Cát Hải", "Huyện đảo Bạch Long Vĩ"], spots: ["Cảng Hoàng Diệu & Cảng Lạch Huyện", "Quần đảo Cát Bà - Vịnh Lan Hạ", "Phố đi bộ Vũ Yên & Thế Lữ", "Foodtour Hải Phòng"] },
+                    { name: "Vĩnh Phúc", isCentral: false, center: "TP. Vĩnh Yên", image: PHOTO_BANK.dalat_pine, districts: ["TP. Vĩnh Yên", "TP. Phúc Yên", "Huyện Tam Đảo"], spots: ["Chợ đêm & Thị trấn sương mù Tam Đảo", "Tây Thiên", "Flamingo Đại Lải"] },
+                    { name: "Hải Dương", isCentral: false, center: "TP. Hải Dương", image: PHOTO_BANK.temple_ancient, districts: ["TP. Hải Dương", "TP. Chí Linh", "TX. Kinh Môn"], spots: ["Côn Sơn - Kiếp Bạc", "Phố đi bộ Bạch Đằng", "Đảo Cò Chi Lăng Nam"] },
+                    { name: "Hưng Yên", isCentral: false, center: "TP. Hưng Yên", image: PHOTO_BANK.theme_park, districts: ["TP. Hưng Yên", "Huyện Văn Giang", "TX. Mỹ Hào"], spots: ["Siêu quần thể ăn chơi Mega Grand World", "Ecopark", "Thương cảng cổ Phố Hiến"] },
+                    { name: "Thái Bình", isCentral: false, center: "TP. Thái Bình", image: PHOTO_BANK.beach_resort, districts: ["TP. Thái Bình", "Huyện Vũ Thư", "Huyện Tiền Hải", "Huyện Thái Thụy"], spots: ["Chùa Keo", "Biển vô cực Quang Lang", "Biển Cồn Vành"] },
+                    { name: "Hà Nam", isCentral: false, center: "TP. Phủ Lý", image: PHOTO_BANK.temple_ancient, districts: ["TP. Phủ Lý", "TX. Kim Bảng", "TX. Duy Tiên"], spots: ["Khu du lịch Tam Chúc", "Nhạc nước Sun Urban Phủ Lý", "Chùa Địa Tạng Phi Lai"] },
+                    { name: "Nam Định", isCentral: false, center: "TP. Nam Định", image: PHOTO_BANK.temple_ancient, districts: ["TP. Nam Định", "Huyện Vụ Bản", "Huyện Giao Thủy"], spots: ["Đền Trần - Chùa Phổ Minh", "Vườn quốc gia Xuân Thủy", "Foodtour Nam Định"] },
+                    { name: "Ninh Bình", isCentral: false, center: "TP. Hoa Lư", image: PHOTO_BANK.ninhbinh_river, districts: ["TP. Hoa Lư", "TP. Tam Điệp", "Huyện Gia Viễn"], spots: ["Bến thuyền Tràng An - Tam Cốc", "Phố cổ Hoa Lư về đêm", "Hang Múa & Chùa Bái Đính"] }
+                ]
+            },
+            {
+                region: "Đông Bắc Bộ (9 tỉnh/thành - Có TP. Quảng Ninh TW)",
+                provinces: [
+                    { name: "TP. Quảng Ninh", isCentral: true, center: "Quận Hạ Long", image: PHOTO_BANK.halong_port, districts: ["Quận Hạ Long", "TP. Cẩm Phả", "TP. Uông Bí", "TP. Móng Cái", "TP. Đông Triều", "Đặc khu Vân Đồn", "Đặc khu Cô Tô"], spots: ["Cảng tàu khách Quốc tế Hạ Long & Tuần Châu", "Vịnh Hạ Long", "Sun World & Valley Beach Club", "Non thiêng Yên Tử", "Đảo Cô Tô - Vân Đồn"] },
+                    { name: "Hà Giang", isCentral: false, center: "TP. Hà Giang", image: PHOTO_BANK.mountain_terrace, districts: ["TP. Hà Giang", "Huyện Đồng Văn", "Huyện Mèo Vạc"], spots: ["Phố cổ Đồng Văn về đêm", "Cột cờ Lũng Cú", "Bến thuyền Sông Nho Quế - Mã Pí Lèng"] },
+                    { name: "Cao Bằng", isCentral: false, center: "TP. Cao Bằng", image: PHOTO_BANK.waterfall, districts: ["TP. Cao Bằng", "Huyện Trùng Khánh", "Huyện Hà Quảng"], spots: ["Thác Bản Giốc", "Phố đi bộ Kim Đồng", "Khu di tích Pác Bó", "Núi Mắt Thần"] },
+                    { name: "Bắc Kạn", isCentral: false, center: "TP. Bắc Kạn", image: PHOTO_BANK.island_aerial, districts: ["TP. Bắc Kạn", "Huyện Ba Bể"], spots: ["Bến thuyền Hồ Ba Bể", "Động Puông", "Thác Đầu Đẳng"] },
+                    { name: "Tuyên Quang", isCentral: false, center: "TP. Tuyên Quang", image: PHOTO_BANK.hoian_lantern, districts: ["TP. Tuyên Quang", "Huyện Na Hang", "Huyện Sơn Dương"], spots: ["Lễ hội Thành Tuyên", "Bến du thuyền Hồ Na Hang", "Khu di tích Tân Trào"] },
+                    { name: "Thái Nguyên", isCentral: false, center: "TP. Thái Nguyên", image: PHOTO_BANK.coffee_chill, districts: ["TP. Thái Nguyên", "TP. Phổ Yên", "Huyện Định Hóa"], spots: ["Hồ Núi Cốc", "Đồi chè Tân Cương", "ATK Định Hóa"] },
+                    { name: "Lạng Sơn", isCentral: false, center: "TP. Lạng Sơn", image: PHOTO_BANK.mountain_terrace, districts: ["TP. Lạng Sơn", "Huyện Lộc Bình", "Huyện Bắc Sơn"], spots: ["Phố đi bộ Kỳ Lừa", "Đỉnh Mẫu Sơn", "Thung lũng Bắc Sơn"] },
+                    { name: "Bắc Giang", isCentral: false, center: "TP. Bắc Giang", image: PHOTO_BANK.temple_ancient, districts: ["TP. Bắc Giang", "TX. Việt Yên", "Huyện Sơn Động"], spots: ["Khu du lịch Tây Yên Tử", "Chùa Vĩnh Nghiêm", "Cao nguyên Đồng Cao"] },
+                    { name: "Phú Thọ", isCentral: false, center: "TP. Việt Trì", image: PHOTO_BANK.temple_ancient, districts: ["TP. Việt Trì", "Huyện Thanh Thủy", "Huyện Tân Sơn"], spots: ["Khu di tích Đền Hùng", "Khoáng nóng Wyndham Thanh Thủy", "Đồi chè Long Cốc"] }
+                ]
+            },
+            {
+                region: "Tây Bắc Bộ (6 tỉnh)",
+                provinces: [
+                    { name: "Lào Cai", isCentral: false, center: "TP. Lào Cai", image: PHOTO_BANK.mountain_terrace, districts: ["TP. Lào Cai", "TX. Sa Pa", "Huyện Bắc Hà"], spots: ["Đỉnh Fansipan & Chợ đêm Sa Pa", "Bản Cát Cát", "Biển mây Y Tý"] },
+                    { name: "Yên Bái", isCentral: false, center: "TP. Yên Bái", image: PHOTO_BANK.mountain_terrace, districts: ["TP. Yên Bái", "Huyện Mù Cang Chải", "Huyện Yên Bình"], spots: ["Ruộng bậc thang Mù Cang Chải", "Cảng du lịch Hồ Thác Bà", "Khoáng nóng Trạm Tấu"] },
+                    { name: "Điện Biên", isCentral: false, center: "TP. Điện Biên Phủ", image: PHOTO_BANK.mountain_terrace, districts: ["TP. Điện Biên Phủ", "Huyện Mường Nhé"], spots: ["Chiến trường Điện Biên Phủ", "Cực Tây A Pa Chải", "Hồ Pá Khoang"] },
+                    { name: "Lai Châu", isCentral: false, center: "TP. Lai Châu", image: PHOTO_BANK.mountain_terrace, districts: ["TP. Lai Châu", "Huyện Tam Đường", "Huyện Phong Thổ"], spots: ["Cầu kính Rồng Mây - Ô Quy Hồ", "Bản Sin Suối Hồ"] },
+                    { name: "Sơn La", isCentral: false, center: "TP. Sơn La", image: PHOTO_BANK.mountain_terrace, districts: ["TP. Sơn La", "TX. Mộc Châu", "Huyện Bắc Yên"], spots: ["Cầu kính Bạch Long & Chợ đêm Mộc Châu", "Biển mây Tà Xùa", "Bến thuyền Quỳnh Nhai"] },
+                    { name: "Hòa Bình", isCentral: false, center: "TP. Hòa Bình", image: PHOTO_BANK.cruise_harbor, districts: ["TP. Hòa Bình", "Huyện Mai Châu", "Huyện Kim Bôi"], spots: ["Cảng Thung Nai - Hồ Hòa Bình", "Thung lũng Mai Châu", "Khoáng nóng Serena Kim Bôi"] }
+                ]
+            },
+            {
+                region: "Bắc Trung Bộ (6 tỉnh/thành - Có TP. Huế TW)",
+                provinces: [
+                    { name: "TP. Huế", isCentral: true, center: "Q. Thuận Hóa & Q. Phú Xuân", image: PHOTO_BANK.hue_citadel, districts: ["Quận Thuận Hóa", "Quận Phú Xuân", "TX. Hương Thủy", "Huyện Phú Lộc"], spots: ["Phố Tây Chu Văn An & Đại Nội Đêm", "Cảng tàu Quốc tế Chân Mây & Vịnh Lăng Cô", "Bến thuyền Tòa Khâm - Sông Hương"] },
+                    { name: "Thanh Hóa", isCentral: false, center: "TP. Thanh Hóa", image: PHOTO_BANK.beach_resort, districts: ["TP. Thanh Hóa", "TP. Sầm Sơn", "TX. Nghi Sơn", "Huyện Bá Thước"], spots: ["Quảng trường Biển & Sun World Sầm Sơn", "Pù Luông", "Cảng Nghi Sơn"] },
+                    { name: "Nghệ An", isCentral: false, center: "TP. Vinh", image: PHOTO_BANK.beach_resort, districts: ["TP. Vinh (Cửa Lò)", "Huyện Nam Đàn", "Huyện Con Cuông"], spots: ["VinWonders Cửa Hội & Cảng Cửa Lò", "Khu di tích Kim Liên", "Phố đêm Vinh"] },
+                    { name: "Hà Tĩnh", isCentral: false, center: "TP. Hà Tĩnh", image: PHOTO_BANK.beach_resort, districts: ["TP. Hà Tĩnh", "TX. Kỳ Anh", "Huyện Cẩm Xuyên"], spots: ["Biển Thiên Cầm", "Cảng nước sâu Vũng Áng", "Chùa Hương Tích"] },
+                    { name: "Quảng Bình", isCentral: false, center: "TP. Đồng Hới", image: PHOTO_BANK.cave_adventure, districts: ["TP. Đồng Hới", "Huyện Bố Trạch"], spots: ["Phong Nha - Kẻ Bàng & Hang Sơn Đoòng", "Phố đêm Bảo Ninh - Nhật Lệ"] },
+                    { name: "Quảng Trị", isCentral: false, center: "TP. Đông Hà", image: PHOTO_BANK.island_aerial, districts: ["TP. Đông Hà", "TX. Quảng Trị", "Huyện đảo Cồn Cỏ"], spots: ["Cảng Cửa Việt - Đảo Cồn Cỏ", "Thành cổ Quảng Trị", "Địa đạo Vịnh Mốc"] }
+                ]
+            },
+            {
+                region: "Duyên hải Nam Trung Bộ (8 tỉnh/thành - Có TP. Đà Nẵng TW)",
+                provinces: [
+                    { name: "TP. Đà Nẵng", isCentral: true, center: "Quận Hải Châu", image: PHOTO_BANK.danang_bridge, districts: ["Quận Hải Châu", "Quận Sơn Trà", "Quận Ngũ Hành Sơn", "Huyện Hòa Vang", "Huyện đảo Hoàng Sa"], spots: ["Cầu Rồng & Bến du thuyền Sông Hàn", "Cảng Tiên Sa", "Bà Nà Hills", "Phố Tây An Thượng & Biển Mỹ Khê"] },
+                    { name: "Quảng Nam", isCentral: false, center: "TP. Tam Kỳ", image: PHOTO_BANK.hoian_lantern, districts: ["TP. Hội An", "TP. Tam Kỳ", "Huyện Duy Xuyên"], spots: ["Phố cổ Hội An về đêm", "Cảng Cửa Đại - Đảo Cù Lao Chàm", "Thánh địa Mỹ Sơn"] },
+                    { name: "Quảng Ngãi", isCentral: false, center: "TP. Quảng Ngãi", image: PHOTO_BANK.island_aerial, districts: ["TP. Quảng Ngãi", "Huyện đảo Lý Sơn", "Huyện Bình Sơn"], spots: ["Cảng Sa Kỳ - Đảo Lý Sơn", "Cảng Dung Quất", "Biển Mỹ Khê"] },
+                    { name: "Bình Định", isCentral: false, center: "TP. Quy Nhơn", image: PHOTO_BANK.beach_resort, districts: ["TP. Quy Nhơn", "TX. An Nhơn", "Huyện Tây Sơn"], spots: ["Cảng Quy Nhơn & Surf Bar", "Kỳ Co - Eo Gió", "Tháp Đôi"] },
+                    { name: "Phú Yên", isCentral: false, center: "TP. Tuy Hòa", image: PHOTO_BANK.beach_resort, districts: ["TP. Tuy Hòa", "TX. Đông Hòa", "Huyện Tuy An"], spots: ["Tháp Nghinh Phong về đêm", "Gành Đá Đĩa", "Cảng Vũng Rô - Mũi Điện"] },
+                    { name: "Khánh Hòa", isCentral: false, center: "TP. Nha Trang", image: PHOTO_BANK.yacht_marina, districts: ["TP. Nha Trang", "TP. Cam Ranh", "Huyện đảo Trường Sa"], spots: ["Bến du thuyền Quốc tế Ana Marina", "Vinpearl Harbour & Sailing Club", "Cảng Quốc tế Cam Ranh"] },
+                    { name: "Ninh Thuận", isCentral: false, center: "TP. Phan Rang - Tháp Chàm", image: PHOTO_BANK.beach_resort, districts: ["TP. Phan Rang - Tháp Chàm", "Huyện Ninh Hải"], spots: ["Vịnh Vĩnh Hy & Bến tàu đáy kính", "Hang Rái", "Tháp Po Klong Garai"] },
+                    { name: "Bình Thuận", isCentral: false, center: "TP. Phan Thiết", image: PHOTO_BANK.beach_club, districts: ["TP. Phan Thiết", "Huyện đảo Phú Quý", "Huyện Bắc Bình"], spots: ["Cảng Phan Thiết - Đảo Phú Quý", "Hanna Beach Club Mũi Né", "Bàu Trắng"] }
+                ]
+            },
+            {
+                region: "Tây Nguyên (5 tỉnh)",
+                provinces: [
+                    { name: "Kon Tum", isCentral: false, center: "TP. Kon Tum", image: PHOTO_BANK.dalat_pine, districts: ["TP. Kon Tum", "Huyện Kon Plông (Măng Đen)"], spots: ["Phố đêm & Rừng thông Măng Đen", "Nhà thờ Gỗ Kon Tum", "Ngã ba Đông Dương"] },
+                    { name: "Gia Lai", isCentral: false, center: "TP. Pleiku", image: PHOTO_BANK.mountain_terrace, districts: ["TP. Pleiku", "Huyện Chư Păh"], spots: ["Biển Hồ Pleiku", "Núi lửa Chư Đăng Ya", "Quảng trường Đại Đoàn Kết"] },
+                    { name: "Đắk Lắk", isCentral: false, center: "TP. Buôn Ma Thuột", image: PHOTO_BANK.coffee_chill, districts: ["TP. Buôn Ma Thuột", "Huyện Buôn Đôn", "Huyện Lắk"], spots: ["Bảo tàng Thế giới Cà phê", "Phố đêm Buôn Ma Thuột", "Khu du lịch Buôn Đôn"] },
+                    { name: "Đắk Nông", isCentral: false, center: "TP. Gia Nghĩa", image: PHOTO_BANK.island_aerial, districts: ["TP. Gia Nghĩa", "Huyện Đắk Glong"], spots: ["Bến thuyền Hồ Tà Đùng", "Hang động núi lửa Chư Bluk"] },
+                    { name: "Lâm Đồng", isCentral: false, center: "TP. Đà Lạt", image: PHOTO_BANK.dalat_pine, districts: ["TP. Đà Lạt", "TP. Bảo Lộc"], spots: ["Chợ đêm Đà Lạt & Quảng trường Lâm Viên", "Show nhạc Mây Lang Thang", "Đỉnh Langbiang"] }
+                ]
+            },
+            {
+                region: "Đông Nam Bộ (6 tỉnh/thành - Có TP. Hồ Chí Minh TW)",
+                provinces: [
+                    { name: "TP. Hồ Chí Minh", isCentral: true, center: "Quận 1", image: PHOTO_BANK.saigon_night, districts: ["TP. Thủ Đức", "Quận 1", "Quận 3", "Huyện Củ Chi", "Huyện Cần Giờ"], spots: ["Phố đi bộ Nguyễn Huệ & Bến Bạch Đằng", "Phố Tây Bùi Viện", "Landmark 81 SkyBar", "Cảng Sài Gòn & Cảng Cần Giờ"] },
+                    { name: "Bà Rịa - Vũng Tàu", isCentral: false, center: "TP. Vũng Tàu", image: PHOTO_BANK.yacht_marina, districts: ["TP. Vũng Tàu", "TP. Phú Mỹ", "Huyện Xuyên Mộc", "Huyện Côn Đảo"], spots: ["Cảng nước sâu Cái Mép - Thị Vải & Vũng Tàu Marina", "Bãi Sau Vũng Tàu", "Hồ Tràm", "Cảng tàu Côn Đảo"] },
+                    { name: "Bình Dương", isCentral: false, center: "TP. Thủ Dầu Một", image: PHOTO_BANK.theme_park, districts: ["TP. Thủ Dầu Một", "TP. Thuận An", "TP. Dĩ An"], spots: ["Phố đi bộ Bạch Đằng bên sông Sài Gòn", "Khu du lịch Đại Nam", "Chùa Bà Bình Dương"] },
+                    { name: "Bình Phước", isCentral: false, center: "TP. Đồng Xoài", image: PHOTO_BANK.mountain_terrace, districts: ["TP. Đồng Xoài", "TX. Phước Long"], spots: ["Núi Bà Rá - Thác Mơ", "Vườn quốc gia Bù Gia Mập"] },
+                    { name: "Đồng Nai", isCentral: false, center: "TP. Biên Hòa", image: PHOTO_BANK.theme_park, districts: ["TP. Biên Hòa", "Huyện Long Thành", "Huyện Tân Phú"], spots: ["Công viên nước Sơn Tiên", "Glamping Hồ Trị An", "Vườn quốc gia Cát Tiên"] },
+                    { name: "Tây Ninh", isCentral: false, center: "TP. Tây Ninh", image: PHOTO_BANK.temple_ancient, districts: ["TP. Tây Ninh", "TX. Hòa Thành"], spots: ["Đỉnh Núi Bà Đen & Show nhạc nước đêm", "Tòa Thánh Cao Đài", "Hồ Dầu Tiếng"] }
+                ]
+            },
+            {
+                region: "Đồng bằng sông Cửu Long (13 tỉnh/thành - Có TP. Cần Thơ TW)",
+                provinces: [
+                    { name: "TP. Cần Thơ", isCentral: true, center: "Quận Ninh Kiều", image: PHOTO_BANK.mekong_floating, districts: ["Quận Ninh Kiều", "Quận Cái Răng", "Quận Bình Thủy"], spots: ["Du thuyền Đêm Bến Ninh Kiều", "Chợ nổi Cái Răng", "Cảng Quốc tế Cái Cui", "Làng du lịch Cồn Sơn"] },
+                    { name: "Kiên Giang", isCentral: false, center: "TP. Rạch Giá", image: PHOTO_BANK.beach_club, districts: ["TP. Phú Quốc", "TP. Rạch Giá", "TP. Hà Tiên", "Huyện Kiên Hải"], spots: ["Grand World & Sunset Town Phú Quốc", "Cảng hành khách Quốc tế Phú Quốc", "Cảng Rạch Giá - Nam Du"] },
+                    { name: "An Giang", isCentral: false, center: "TP. Long Xuyên", image: PHOTO_BANK.ninhbinh_river, districts: ["TP. Long Xuyên", "TP. Châu Đốc", "Huyện Tri Tôn"], spots: ["Miếu Bà Chúa Xứ Núi Sam", "Rừng tràm Trà Sư", "Núi Cấm"] },
+                    { name: "Tiền Giang", isCentral: false, center: "TP. Mỹ Tho", image: PHOTO_BANK.cruise_harbor, districts: ["TP. Mỹ Tho", "Huyện Cái Bè"], spots: ["Cảng Du thuyền Mỹ Tho - Cù lao Thới Sơn", "Chùa Vĩnh Tràng"] },
+                    { name: "Đồng Tháp", isCentral: false, center: "TP. Cao Lãnh", image: PHOTO_BANK.mekong_floating, districts: ["TP. Sa Đéc", "TP. Cao Lãnh", "Huyện Tam Nông"], spots: ["Làng hoa Sa Đéc", "Vườn quốc gia Tràm Chim"] },
+                    { name: "Bến Tre", isCentral: false, center: "TP. Bến Tre", image: PHOTO_BANK.mekong_floating, districts: ["TP. Bến Tre", "Huyện Châu Thành"], spots: ["Khu vui chơi Lan Vương & Cồn Phụng"] },
+                    { name: "Vĩnh Long", isCentral: false, center: "TP. Vĩnh Long", image: PHOTO_BANK.mekong_floating, districts: ["TP. Vĩnh Long", "Huyện Mang Thít"], spots: ["Di sản Lò gạch Mang Thít", "Cù lao An Bình"] },
+                    { name: "Trà Vinh", isCentral: false, center: "TP. Trà Vinh", image: PHOTO_BANK.temple_ancient, districts: ["TP. Trà Vinh", "TX. Duyên Hải"], spots: ["Ao Bà Om", "Cảng Định An - Điện gió Duyên Hải"] },
+                    { name: "Sóc Trăng", isCentral: false, center: "TP. Sóc Trăng", image: PHOTO_BANK.temple_ancient, districts: ["TP. Sóc Trăng", "Huyện Trần Đề"], spots: ["Chùa Som Rong", "Cảng tàu cao tốc Trần Đề đi Côn Đảo"] },
+                    { name: "Hậu Giang", isCentral: false, center: "TP. Vị Thanh", image: PHOTO_BANK.island_aerial, districts: ["TP. Vị Thanh", "TP. Ngã Bảy"], spots: ["Công viên Ánh sáng Kênh xáng Xà No", "Lung Ngọc Hoàng"] },
+                    { name: "Bạc Liêu", isCentral: false, center: "TP. Bạc Liêu", image: PHOTO_BANK.temple_ancient, districts: ["TP. Bạc Liêu"], spots: ["Nhà Công tử Bạc Liêu", "Cánh đồng Điện gió Bạc Liêu"] },
+                    { name: "Cà Mau", isCentral: false, center: "TP. Cà Mau", image: PHOTO_BANK.island_aerial, districts: ["TP. Cà Mau", "Huyện Ngọc Hiển"], spots: ["Mũi Cà Mau (GPS 0001)", "Cảng nước sâu Hòn Khoai", "Rừng U Minh Hạ"] },
+                    { name: "Long An", isCentral: false, center: "TP. Tân An", image: PHOTO_BANK.container_port, districts: ["TP. Tân An", "Huyện Cần Giuộc"], spots: ["Cảng Quốc tế Long An", "Làng nổi Tân Lập"] }
+                ]
+            }
+        ];
+
+        // ============================================================================
+        // 4. XÂY DỰNG CÂY DỮ LIỆU MIND MAP (HỖ TRỢ 34/63 TỈNH & NHÁNH ĂN CHƠI - CẢNG BIỂN)
+        // ============================================================================
+        let currentMode = '34';
+        let showTourismBranches = true;
+        let selectedNodeId = null;
+        let currentSelectedNode = null;
+        let currentPanelTab = 'all';
+
+        function buildTreeData(mode, includeTourismNodes) {
+            if (mode === '34') {
+                return {
+                    name: "Việt Nam",
+                    subtitle: "8 TP Trực thuộc TW & 26 Tỉnh (2 Cấp)",
+                    nodeType: "country",
+                    image: PHOTO_BANK.halong_port,
+                    overview: "Hệ thống hành chính Việt Nam hiện hành gồm 34 đơn vị cấp Tỉnh: 8 Thành phố trực thuộc Trung ương (Hà Nội, Hải Phòng, Quảng Ninh, Bắc Ninh, Huế, Đà Nẵng, TP. Hồ Chí Minh, Cần Thơ) và 26 Tỉnh, tổ chức theo mô hình 2 cấp (Cấp Tỉnh -> Phường, Xã, Đặc khu).",
+                    children: DATA_34_PROVINCES.map(reg => ({
+                        name: reg.region,
+                        subtitle: `${reg.provinces.length} Tỉnh/Thành phố`,
+                        nodeType: "region",
+                        image: reg.image,
+                        overview: reg.description,
+                        children: reg.provinces.map(prov => {
+                            const adminChildren = prov.units.map(u => {
+                                const unitChildren = (includeTourismNodes && u.spots && u.spots.length > 0)
+                                    ? u.spots.map(sp => ({
+                                        name: `📍 ${sp}`,
+                                        subtitle: `Điểm nổi bật tại ${u.name}`,
+                                        nodeType: "spot",
+                                        image: u.image || prov.image,
+                                        parentProvince: prov.name,
+                                        overview: `Địa danh du lịch, cảng biển và điểm ăn chơi nổi bật thuộc địa bàn ${u.name}, ${prov.name}.`
+                                    }))
+                                    : [];
+                                return {
+                                    name: u.name,
+                                    subtitle: u.type,
+                                    nodeType: "commune",
+                                    image: u.image || prov.image,
+                                    spotsList: u.spots || [],
+                                    parentProvince: prov.name,
+                                    overview: `${u.type} trực thuộc ${prov.name}. Nơi tập trung các điểm tham quan, bến cảng và vui chơi giải trí đặc sắc.`,
+                                    children: unitChildren.length > 0 ? unitChildren : null
+                                };
+                            });
+
+                            const tourismHubNode = includeTourismNodes ? [{
+                                name: `🎉 Điểm ăn chơi, Cảng & Du lịch (${prov.tourism.length})`,
+                                subtitle: `Khám phá ${prov.name}`,
+                                nodeType: "tourism_hub",
+                                image: prov.tourism[0] ? prov.tourism[0].image : prov.image,
+                                parentProvince: prov.name,
+                                tourismData: prov.tourism,
+                                overview: `Tổng hợp các điểm ăn chơi về đêm (Nightlife), bến cảng du thuyền, danh thắng và ẩm thực đặc sản tại ${prov.name}.`,
+                                children: prov.tourism.map(t => ({
+                                    name: t.name,
+                                    subtitle: t.category,
+                                    nodeType: t.kind === 'nightlife' ? "nightlife_spot" : "spot",
+                                    category: t.category,
+                                    kind: t.kind,
+                                    time: t.time,
+                                    image: t.image || prov.image,
+                                    overview: t.desc,
+                                    parentProvince: prov.name
+                                }))
+                            }] : [];
+
+                            return {
+                                name: prov.isCentralCity ? `👑 ${prov.name}` : prov.name,
+                                rawName: prov.name,
+                                isCentralCity: prov.isCentralCity,
+                                subtitle: prov.isCentralCity ? `TP Trực thuộc TW • TT: ${prov.adminCenter.split('&')[0].trim()}` : `Tỉnh • TT: ${prov.adminCenter.split('&')[0].trim()}`,
+                                nodeType: prov.isCentralCity ? "central_city" : "province",
+                                image: prov.image,
+                                mergedFrom: prov.mergedFrom,
+                                adminCenter: prov.adminCenter,
+                                overview: prov.overview,
+                                unitsData: prov.units,
+                                tourismData: prov.tourism,
+                                children: [...tourismHubNode, ...adminChildren]
+                            };
+                        })
+                    }))
+                };
+            } else {
+                // Mode 63 Tỉnh/Thành phố (8 TP Trực thuộc TW & 55 Tỉnh)
+                return {
+                    name: "Việt Nam",
+                    subtitle: "63 Tỉnh/TP (8 TP Trực thuộc TW)",
+                    nodeType: "country",
+                    image: PHOTO_BANK.halong_port,
+                    overview: "Hệ thống 63 Tỉnh/Thành phố phân theo 8 vùng địa lý, cập nhật 8 Thành phố trực thuộc Trung ương (Hà Nội, Hải Phòng, Quảng Ninh, Bắc Ninh, Huế, Đà Nẵng, TP.HCM, Cần Thơ).",
+                    children: DATA_63_REGIONS.map(reg => ({
+                        name: reg.region,
+                        subtitle: `${reg.provinces.length} địa phương`,
+                        nodeType: "region",
+                        image: PHOTO_BANK.mountain_terrace,
+                        overview: `Vùng địa lý ${reg.region}.`,
+                        children: reg.provinces.map(prov => {
+                            const districtNodes = prov.districts.map((dist, idx) => ({
+                                name: dist,
+                                subtitle: idx === 0 ? "Đô thị trung tâm" : "ĐVHC Cấp Quận/Huyện",
+                                nodeType: "district",
+                                image: prov.image,
+                                parentProvince: prov.name,
+                                overview: `Đơn vị hành chính trực thuộc ${prov.name}.`,
+                                children: [
+                                    {
+                                        name: `Các Phường / Xã thuộc ${dist}`,
+                                        subtitle: "ĐVHC Cấp Xã",
+                                        nodeType: "commune",
+                                        image: prov.image,
+                                        parentProvince: prov.name,
+                                        overview: `Các phường, xã trực thuộc ${dist}, ${prov.name}.`
+                                    }
+                                ]
+                            }));
+
+                            const tourismHub = includeTourismNodes ? [{
+                                name: `🎉 Điểm ăn chơi & Cảng (${prov.spots.length})`,
+                                subtitle: `Khám phá ${prov.name}`,
+                                nodeType: "tourism_hub",
+                                image: prov.image,
+                                parentProvince: prov.name,
+                                overview: `Các điểm ăn chơi, bến cảng và danh thắng nổi bật tại ${prov.name}.`,
+                                children: prov.spots.map(sp => ({
+                                    name: `✨ ${sp}`,
+                                    subtitle: "Điểm đến & Giải trí",
+                                    nodeType: "spot",
+                                    image: prov.image,
+                                    parentProvince: prov.name,
+                                    overview: `Địa danh nổi tiếng và điểm vui chơi giải trí tại ${prov.name}.`
+                                }))
+                            }] : [];
+
+                            return {
+                                name: prov.isCentral ? `👑 ${prov.name}` : prov.name,
+                                rawName: prov.name,
+                                isCentralCity: prov.isCentral,
+                                subtitle: prov.isCentral ? `TP Trực thuộc TW • TT: ${prov.center}` : `Trung tâm: ${prov.center}`,
+                                nodeType: prov.isCentral ? "central_city" : "province",
+                                image: prov.image,
+                                mergedFrom: prov.isCentral ? "Thành phố trực thuộc Trung ương" : "Tỉnh thuộc Trung ương",
+                                adminCenter: prov.center,
+                                overview: `${prov.name} với trung tâm hành chính tại ${prov.center}.`,
+                                unitsData: prov.districts.map(d => ({ name: d, type: "Quận/Huyện", image: prov.image, spots: [] })),
+                                tourismData: prov.spots.map(s => ({
+                                    name: s,
+                                    category: s.toLowerCase().includes('cảng') || s.toLowerCase().includes('bến') ? "⚓ Cảng & Bến thuyền" : (s.toLowerCase().includes('đêm') || s.toLowerCase().includes('phố') || s.toLowerCase().includes('bar') ? "🎉 Ăn chơi & Nightlife" : "🏛️ Danh thắng"),
+                                    kind: s.toLowerCase().includes('đêm') || s.toLowerCase().includes('phố') || s.toLowerCase().includes('bar') ? "nightlife" : "scenic",
+                                    image: prov.image,
+                                    time: "Cả ngày & Đêm",
+                                    desc: `Điểm tham quan, cảng biển và vui chơi giải trí tiêu biểu tại ${prov.name}.`
+                                })),
+                                children: [...tourismHub, ...districtNodes]
+                            };
+                        })
+                    }))
+                };
+            }
+        }
+
+        // ============================================================================
+        // 5. KHỞI TẠO SƠ ĐỒ D3.JS MIND MAP VỚI THUMBNAIL ẢNH TRÒN TRÊN NODE
+        // ============================================================================
+        const container = document.getElementById('mindmap-container');
+        let width = container.clientWidth;
+        let height = container.clientHeight;
+
+        const dx = 48; // Khoảng cách dọc rộng rãi để hiển thị avatar ảnh tròn
+        const dy = 285; // Khoảng cách ngang giữa các cấp
+
+        const tree = d3.tree().nodeSize([dx, dy]);
+        let root;
+        let nodeIdCounter = 0;
+
+        const zoomBehavior = d3.zoom()
+            .scaleExtent([0.15, 2.5])
+            .on("zoom", (event) => {
+                svgGroup.attr("transform", event.transform);
+                hideHoverCard();
+            });
+
+        const svg = d3.select("#mindmap-container").append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .call(zoomBehavior)
+            .on("dblclick.zoom", null);
+
+        // Định nghĩa clipPath tròn cho ảnh thumbnail trên node
+        const defs = svg.append("defs");
+        defs.append("clipPath")
+            .attr("id", "node-avatar-clip")
+            .append("circle")
+            .attr("r", 11)
+            .attr("cx", 0)
+            .attr("cy", 0);
+
+        const svgGroup = svg.append("g");
+        const linkGroup = svgGroup.append("g").attr("class", "links-layer");
+        const nodeGroup = svgGroup.append("g").attr("class", "nodes-layer");
+
+        function collapse(d) {
+            if (d.children) {
+                d._children = d.children;
+                d._children.forEach(collapse);
+                d.children = null;
+            }
+        }
+
+        function initMindMap() {
+            const rawData = buildTreeData(currentMode, showTourismBranches);
+            root = d3.hierarchy(rawData, d => d.children);
+            root.x0 = 0;
+            root.y0 = 0;
+
+            // Mặc định mở Quốc gia -> Vùng -> Tỉnh/TP, thu gọn các cấp dưới Tỉnh
+            if (root.children) {
+                root.children.forEach(regionNode => {
+                    if (regionNode.children) {
+                        regionNode.children.forEach(provNode => {
+                            collapse(provNode);
+                        });
+                    }
+                });
+            }
+
+            update(root);
+            renderQuickButtons();
+            updateInfoPanel(root);
+            setTimeout(() => resetZoom(600), 100);
+        }
+
+        function getNodeColor(d) {
+            const type = d.data.nodeType;
+            const hasHidden = !!d._children;
+            switch (type) {
+                case 'country':
+                    return { stroke: '#dc2626', fill: '#ef4444', r: 15 };
+                case 'region':
+                    return { stroke: '#7c3aed', fill: hasHidden ? '#ddd6fe' : '#f5f3ff', r: 12 };
+                case 'central_city':
+                    return { stroke: '#dc2626', fill: hasHidden ? '#fde68a' : '#fef3c7', r: 12.5 };
+                case 'province':
+                    return { stroke: '#059669', fill: hasHidden ? '#a7f3d0' : '#ecfdf5', r: 10.5 };
+                case 'district':
+                    return { stroke: '#0d9488', fill: hasHidden ? '#99f6e4' : '#f0fdfa', r: 8.5 };
+                case 'commune':
+                    return { stroke: '#2563eb', fill: hasHidden ? '#bfdbfe' : '#eff6ff', r: 8.5 };
+                case 'tourism_hub':
+                    return { stroke: '#d97706', fill: hasHidden ? '#fcd34d' : '#fef3c7', r: 10 };
+                case 'nightlife_spot':
+                    return { stroke: '#db2777', fill: '#fce7f3', r: 9 };
+                case 'spot':
+                    return { stroke: '#ea580c', fill: '#ffedd5', r: 9 };
+                default:
+                    return { stroke: '#64748b', fill: '#f1f5f9', r: 8 };
+            }
+        }
+
+        function update(source) {
+            const treeData = tree(root);
+            const nodes = treeData.descendants();
+            const links = treeData.links();
+
+            nodes.forEach(d => {
+                d.y = d.depth * dy;
+            });
+
+            // ---------------- NODES ----------------
+            const node = nodeGroup.selectAll('g.node')
+                .data(nodes, d => d.id || (d.id = ++nodeIdCounter));
+
+            const nodeEnter = node.enter().append('g')
+                .attr('class', d => `node type-${d.data.nodeType}`)
+                .attr("transform", d => `translate(${source.y0},${source.x0})`)
+                .on('click', (event, d) => {
+                    event.stopPropagation();
+                    handleNodeClick(d);
+                })
+                .on('mouseenter', (event, d) => {
+                    showHoverCard(event, d);
+                })
+                .on('mousemove', (event) => {
+                    moveHoverCard(event);
+                })
+                .on('mouseleave', () => {
+                    hideHoverCard();
+                });
+
+            // Vòng tròn nền
+            nodeEnter.append('circle')
+                .attr('class', 'node-ring')
+                .attr('r', 1e-6);
+
+            // Hình ảnh thumbnail tròn bên trong các node Tỉnh/TP và Điểm ăn chơi
+            nodeEnter.filter(d => d.data.image && (d.data.nodeType === 'central_city' || d.data.nodeType === 'province' || d.data.nodeType === 'spot' || d.data.nodeType === 'nightlife_spot'))
+                .append('image')
+                .attr('xlink:href', d => d.data.image)
+                .attr('x', -11)
+                .attr('y', -11)
+                .attr('width', 22)
+                .attr('height', 22)
+                .attr('clip-path', 'url(#node-avatar-clip)')
+                .attr('preserveAspectRatio', 'xMidYMid slice')
+                .style('pointer-events', 'none');
+
+            // Dấu + nhỏ ở góc phải dưới vòng tròn nếu còn nhánh ẩn
+            nodeEnter.append('circle')
+                .attr('class', 'plus-badge')
+                .attr('cx', 9)
+                .attr('cy', -9)
+                .attr('r', 5.5)
+                .style('fill', '#0f172a')
+                .style('stroke', '#ffffff')
+                .style('stroke-width', '1.5px')
+                .style('display', 'none');
+
+            nodeEnter.append('text')
+                .attr('class', 'expand-indicator')
+                .attr('x', 9)
+                .attr('y', -9)
+                .attr('text-anchor', 'middle')
+                .attr('dy', '0.34em')
+                .style('font-size', '8.5px')
+                .style('font-weight', '900')
+                .style('fill', '#ffffff')
+                .style('pointer-events', 'none');
+
+            // Tên Node
+            nodeEnter.append('text')
+                .attr('class', 'title')
+                .attr("dy", "-0.18em")
+                .attr("x", d => (d.depth === 0) ? -20 : 18)
+                .attr("text-anchor", d => (d.depth === 0) ? "end" : "start")
+                .text(d => d.data.name);
+
+            // Phụ đề Node
+            nodeEnter.append('text')
+                .attr("class", d => (d.data.nodeType === 'tourism_hub' || d.data.nodeType === 'spot' || d.data.nodeType === 'nightlife_spot' || d.data.nodeType === 'central_city') ? "tourism-tag" : "subtitle")
+                .attr("dy", "1.1em")
+                .attr("x", d => (d.depth === 0) ? -20 : 18)
+                .attr("text-anchor", d => (d.depth === 0) ? "end" : "start")
+                .text(d => d.data.subtitle || '');
+
+            // Merge & Update
+            const nodeUpdate = nodeEnter.merge(node);
+
+            nodeUpdate.attr('class', d => `node type-${d.data.nodeType} ${selectedNodeId === d.id ? 'node-selected' : ''}`);
+
+            nodeUpdate.transition()
+                .duration(420)
+                .ease(d3.easeCubicOut)
+                .attr("transform", d => `translate(${d.y},${d.x})`);
+
+            nodeUpdate.select('circle.node-ring')
+                .attr('r', d => getNodeColor(d).r)
+                .style("stroke", d => getNodeColor(d).stroke)
+                .style("fill", d => getNodeColor(d).fill);
+
+            nodeUpdate.select('circle.plus-badge')
+                .style('display', d => d._children ? 'block' : 'none');
+
+            nodeUpdate.select('text.expand-indicator')
+                .text(d => d._children ? '+' : '');
+
+            nodeUpdate.select('text.title')
+                .style('fill', d => {
+                    if (d.data.nodeType === 'central_city') return '#b91c1c';
+                    if (d.data.nodeType === 'nightlife_spot') return '#be185d';
+                    if (d.data.nodeType === 'tourism_hub') return '#b45309';
+                    return '#0f172a';
+                });
+
+            const nodeExit = node.exit().transition()
+                .duration(350)
+                .attr("transform", d => `translate(${source.y},${source.x})`)
+                .remove();
+
+            nodeExit.select('circle').attr('r', 1e-6);
+            nodeExit.selectAll('text').style('fill-opacity', 1e-6);
+
+            // ---------------- LINKS ----------------
+            const link = linkGroup.selectAll('path.link')
+                .data(links, d => d.target.id);
+
+            const linkEnter = link.enter().insert('path', "g")
+                .attr("class", d => {
+                    const t = d.target.data.nodeType;
+                    if (t === 'central_city') return 'link central-city-link';
+                    if (t === 'nightlife_spot') return 'link nightlife-link';
+                    if (t === 'tourism_hub' || t === 'spot') return 'link tourism-link';
+                    return 'link';
+                })
+                .attr('d', d => {
+                    const o = { x: source.x0, y: source.y0 };
+                    return diagonal(o, o);
+                });
+
+            const linkUpdate = linkEnter.merge(link);
+            linkUpdate.transition()
+                .duration(420)
+                .ease(d3.easeCubicOut)
+                .attr('d', d => diagonal(d.source, d.target));
+
+            link.exit().transition()
+                .duration(350)
+                .attr('d', d => {
+                    const o = { x: source.x, y: source.y };
+                    return diagonal(o, o);
+                })
+                .remove();
+
+            nodes.forEach(d => {
+                d.x0 = d.x;
+                d.y0 = d.y;
+            });
+        }
+
+        function diagonal(s, d) {
+            return `M ${s.y} ${s.x}
+                    C ${(s.y + d.y) / 2} ${s.x},
+                      ${(s.y + d.y) / 2} ${d.x},
+                      ${d.y} ${d.x}`;
+        }
+
+        // ============================================================================
+        // 6. HOVER PREVIEW CARD VỚI ẢNH TRỰC QUAN TRÊN SƠ ĐỒ
+        // ============================================================================
+        const hoverCard = document.getElementById('hover-preview-card');
+        function showHoverCard(event, d) {
+            const data = d.data;
+            if (!data) return;
+            document.getElementById('hover-card-img').src = data.image || PHOTO_BANK.halong_port;
+            document.getElementById('hover-card-img').alt = data.name;
+            document.getElementById('hover-card-title').textContent = data.name;
+            document.getElementById('hover-card-sub').textContent = data.subtitle || '';
+            document.getElementById('hover-card-desc').textContent = data.overview || '';
+
+            const badge = document.getElementById('hover-card-badge');
+            if (data.nodeType === 'central_city') {
+                badge.textContent = '👑 TP. Trực thuộc TW';
+                badge.className = 'absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white shadow';
+            } else if (data.nodeType === 'nightlife_spot') {
+                badge.textContent = '🎉 Điểm ăn chơi & Nightlife';
+                badge.className = 'absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-600 text-white shadow';
+            } else if (data.nodeType === 'spot' || data.nodeType === 'tourism_hub') {
+                badge.textContent = data.category || '⚓ Danh thắng & Bến cảng';
+                badge.className = 'absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 shadow';
+            } else {
+                badge.textContent = '🗺️ Đơn vị Hành chính';
+                badge.className = 'absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow';
+            }
+
+            hoverCard.classList.remove('hidden');
+            moveHoverCard(event);
+        }
+
+        function moveHoverCard(event) {
+            if (hoverCard.classList.contains('hidden')) return;
+            const cardW = 290;
+            const cardH = 260;
+            let left = event.clientX + 18;
+            let top = event.clientY + 18;
+            if (left + cardW > window.innerWidth - 20) left = event.clientX - cardW - 18;
+            if (top + cardH > window.innerHeight - 20) top = event.clientY - cardH - 18;
+            hoverCard.style.left = `${Math.max(10, left)}px`;
+            hoverCard.style.top = `${Math.max(10, top)}px`;
+        }
+
+        function hideHoverCard() {
+            hoverCard.classList.add('hidden');
+        }
+
+        // ============================================================================
+        // 7. CLICK NODE & BẢNG CHI TIẾT CÓ BỘ SƯU TẬP ẢNH + LIGHTBOX
+        // ============================================================================
+        function handleNodeClick(d) {
+            hideHoverCard();
+            selectedNodeId = d.id;
+            if (d.children) {
+                d._children = d.children;
+                d.children = null;
+            } else if (d._children) {
+                d.children = d._children;
+                d._children = null;
+            }
+            currentPanelTab = 'all';
+            updateTabButtonsUI();
+            update(d);
+            updateInfoPanel(d);
+            centerOnNode(d, 500);
+        }
+
+        function centerOnNode(d, duration = 600, customScale = null) {
+            const currentTransform = d3.zoomTransform(svg.node());
+            const scale = customScale || Math.max(currentTransform.k, 0.85);
+            const panelWidth = document.getElementById('info-panel').classList.contains('hidden') ? 0 : 410;
+            const visibleWidth = width - panelWidth;
+            const x = -d.y * scale + visibleWidth / 2.5;
+            const y = -d.x * scale + height / 2;
+
+            svg.transition().duration(duration).ease(d3.easeCubicOut).call(
+                zoomBehavior.transform,
+                d3.zoomIdentity.translate(x, y).scale(scale)
+            );
+        }
+
+        function resetZoom(duration = 600) {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            const scale = currentMode === '34' ? 0.56 : 0.45;
+            svg.transition().duration(duration).call(
+                zoomBehavior.transform,
+                d3.zoomIdentity.translate(110, height / 2).scale(scale)
+            );
+        }
+
+        function setPanelTab(tabName) {
+            currentPanelTab = tabName;
+            updateTabButtonsUI();
+            if (currentSelectedNode) {
+                updateInfoPanel(currentSelectedNode);
+            }
+        }
+
+        function updateTabButtonsUI() {
+            const tabs = ['all', 'nightlife', 'scenic', 'food', 'admin'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (!btn) return;
+                if (t === currentPanelTab) {
+                    btn.className = "px-2.5 py-1 rounded-lg bg-slate-900 text-white shadow-xs shrink-0 transition-all";
+                } else {
+                    btn.className = "px-2.5 py-1 rounded-lg text-slate-600 hover:bg-white shrink-0 transition-all";
+                }
+            });
+        }
+
+        function updateInfoPanel(d) {
+            currentSelectedNode = d;
+            const data = d.data;
+            const heroImg = document.getElementById('panel-hero-img');
+            const badgeEl = document.getElementById('panel-badge');
+            const portBadgeEl = document.getElementById('panel-port-badge');
+            const titleEl = document.getElementById('panel-title');
+            const subtitleEl = document.getElementById('panel-subtitle');
+            const contentEl = document.getElementById('panel-content');
+
+            heroImg.src = data.image || PHOTO_BANK.halong_port;
+            heroImg.alt = data.name;
+
+            const badgeMap = {
+                'country': { text: '🇻🇳 Quốc gia', cls: 'bg-red-600 text-white' },
+                'region': { text: '🗺️ Vùng Kinh tế - Xã hội', cls: 'bg-purple-600 text-white' },
+                'central_city': { text: '👑 Thành phố Trực thuộc TW', cls: 'bg-gradient-to-r from-red-600 to-amber-500 text-white' },
+                'province': { text: '🏛️ Tỉnh (Cấp Tỉnh)', cls: 'bg-emerald-600 text-white' },
+                'district': { text: 'ĐVHC Cấp Quận / Huyện', cls: 'bg-teal-600 text-white' },
+                'commune': { text: '📍 Phường / Xã / Đặc khu', cls: 'bg-blue-600 text-white' },
+                'tourism_hub': { text: '🎉 Tổ hợp Ăn chơi & Du lịch', cls: 'bg-amber-500 text-slate-950' },
+                'nightlife_spot': { text: '🎉 Điểm Ăn Chơi & Nightlife', cls: 'bg-pink-600 text-white' },
+                'spot': { text: '⚓ Danh thắng & Bến cảng', cls: 'bg-amber-500 text-slate-950' }
+            };
+            const bInfo = badgeMap[data.nodeType] || badgeMap['commune'];
+            badgeEl.className = `inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider shadow ${bInfo.cls}`;
+            badgeEl.textContent = bInfo.text;
+
+            // Hiển thị nhãn Cảng biển nếu địa phương có cảng
+            const hasPort = JSON.stringify(data).toLowerCase().includes('cảng') || JSON.stringify(data).toLowerCase().includes('bến du thuyền');
+            if (hasPort && (data.nodeType === 'central_city' || data.nodeType === 'province')) {
+                portBadgeEl.classList.remove('hidden');
+            } else {
+                portBadgeEl.classList.add('hidden');
+            }
+
+            titleEl.textContent = data.name.replace(/^[👑🌟✨📍🎉]\s*/, '');
+            subtitleEl.textContent = data.subtitle || '';
+
+            let html = '';
+
+            // 1. Mô tả tổng quan
+            if (data.overview) {
+                html += `
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-xs text-slate-700 leading-relaxed">
+                        ${data.overview}
+                    </div>
+                `;
+            }
+
+            // 2. Nếu là TP Trực thuộc TW hoặc Tỉnh: Hiển thị thông tin Hành chính + Thư viện Ảnh Điểm ăn chơi, Cảng biển, Ẩm thực
+            if (data.nodeType === 'central_city' || data.nodeType === 'province') {
+                if (currentPanelTab === 'all' || currentPanelTab === 'admin') {
+                    html += `
+                        <div class="${data.isCentralCity ? 'bg-gradient-to-br from-red-50 via-amber-50/70 to-orange-50 border-amber-300' : 'bg-emerald-50/70 border-emerald-200'} border rounded-xl p-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-extrabold uppercase ${data.isCentralCity ? 'text-red-700' : 'text-emerald-800'} tracking-wider">
+                                    ${data.isCentralCity ? '👑 Đô thị Trực thuộc Trung ương' : '🏛️ Thông tin Địa giới Hành chính'}
+                                </span>
+                            </div>
+                            <div class="text-xs font-bold text-slate-800 mt-1">📍 Trung tâm hành chính: <span class="text-red-700">${data.adminCenter}</span></div>
+                            <div class="text-xs text-slate-600 mt-1">🔄 Cơ cấu: <strong>${data.mergedFrom}</strong></div>
+                        </div>
+                    `;
+                }
+
+                // Lọc danh sách Điểm ăn chơi, Danh thắng & Cảng, Ẩm thực theo Tab
+                if (data.tourismData && data.tourismData.length > 0 && currentPanelTab !== 'admin') {
+                    const filteredSpots = data.tourismData.filter(t => {
+                        if (currentPanelTab === 'all') return true;
+                        if (currentPanelTab === 'nightlife') return t.kind === 'nightlife';
+                        if (currentPanelTab === 'scenic') return t.kind === 'scenic';
+                        if (currentPanelTab === 'food') return t.kind === 'food';
+                        return true;
+                    });
+
+                    html += `
+                        <div>
+                            <div class="flex items-center justify-between mb-2.5">
+                                <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                                    <span>📸</span> Khám phá Điểm ăn chơi, Bến cảng & Ẩm thực (${filteredSpots.length})
+                                </h3>
+                                <span class="text-[10px] text-slate-400">Click ảnh để phóng to</span>
+                            </div>
+                            <div class="space-y-3">
+                                ${filteredSpots.map((t, idx) => `
+                                    <div class="group rounded-2xl bg-white border border-slate-200 hover:border-amber-400 shadow-xs hover:shadow-md transition-all overflow-hidden">
+                                        <div class="relative h-36 w-full bg-slate-900 overflow-hidden cursor-pointer" 
+                                             onclick="openLightbox('${(t.image || data.image).replace(/'/g, "\\'")}', '${t.name.replace(/'/g, "\\'")}', '${t.category.replace(/'/g, "\\'")}', '${data.name.replace(/'/g, "\\'")}', '${t.desc.replace(/'/g, "\\'")}', '${(t.time || 'Cả ngày').replace(/'/g, "\\'")}')">
+                                            <img src="${t.image || data.image}" alt="${t.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="handleImgError(this)">
+                                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20"></div>
+                                            <span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${t.kind === 'nightlife' ? 'bg-pink-600 text-white' : (t.kind === 'food' ? 'bg-orange-500 text-white' : 'bg-amber-400 text-slate-950')} shadow">
+                                                ${t.category}
+                                            </span>
+                                            ${t.time ? `<span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-black/60 text-white backdrop-blur-xs">🕒 ${t.time}</span>` : ''}
+                                            <div class="absolute bottom-2 left-3 right-3 text-white">
+                                                <h4 class="text-xs sm:text-sm font-extrabold leading-snug drop-shadow">${t.name}</h4>
+                                            </div>
+                                        </div>
+                                        <div class="p-3">
+                                            <p class="text-xs text-slate-600 leading-relaxed">${t.desc}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Danh sách Phường / Xã / Đặc khu trực thuộc
+                if (data.unitsData && data.unitsData.length > 0 && (currentPanelTab === 'all' || currentPanelTab === 'admin')) {
+                    html += `
+                        <div>
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-800 mb-2 flex items-center gap-1.5">
+                                <span>🗺️</span> Các Phường, Xã, Đặc khu trọng điểm (${data.unitsData.length})
+                            </h3>
+                            <div class="space-y-2">
+                                ${data.unitsData.map(u => `
+                                    <div class="p-2.5 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-200 transition-colors">
+                                        <div class="flex items-center gap-2.5">
+                                            <img src="${u.image || data.image}" alt="${u.name}" class="w-11 h-11 rounded-lg object-cover shrink-0 border border-slate-300 cursor-pointer"
+                                                 onclick="openLightbox('${(u.image || data.image).replace(/'/g, "\\'")}', '${u.name.replace(/'/g, "\\'")}', '${u.type.replace(/'/g, "\\'")}', '${data.name.replace(/'/g, "\\'")}', 'Đơn vị hành chính trọng điểm thuộc ${data.name.replace(/'/g, "\\'")}', 'Mở cửa cả ngày')"
+                                                 onerror="handleImgError(this)">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center justify-between gap-1">
+                                                    <span class="text-xs font-bold text-slate-900 truncate">${u.name}</span>
+                                                    <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold">${u.type}</span>
+                                                </div>
+                                                ${u.spots && u.spots.length > 0 ? `
+                                                    <div class="mt-1.5 flex flex-wrap gap-1">
+                                                        ${u.spots.map(sp => `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] bg-amber-100/90 text-amber-900 font-medium">📍 ${sp}</span>`).join('')}
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 3. Nếu là Phường / Xã / Đặc khu
+            else if (data.nodeType === 'commune' || data.nodeType === 'district') {
+                if (data.parentProvince) {
+                    html += `
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs flex items-center justify-between">
+                            <div><span class="text-slate-500">Trực thuộc:</span> <strong class="text-blue-900">${data.parentProvince}</strong></div>
+                            <button onclick="focusNodeByName('${data.parentProvince.replace(/'/g, "\\'")}')" class="text-blue-600 font-bold hover:underline">Xem Tỉnh/TP →</button>
+                        </div>
+                    `;
+                }
+                if (data.spotsList && data.spotsList.length > 0) {
+                    html += `
+                        <div>
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-amber-800 mb-2">🎉 Điểm ăn chơi, Bến cảng & Danh thắng tại ${data.name}</h3>
+                            <div class="space-y-2.5">
+                                ${data.spotsList.map(sp => `
+                                    <div class="rounded-xl bg-white border border-amber-200 overflow-hidden shadow-2xs flex items-center gap-3 p-2.5">
+                                        <img src="${data.image || PHOTO_BANK.halong_port}" alt="${sp}" class="w-16 h-16 rounded-lg object-cover shrink-0 cursor-pointer"
+                                             onclick="openLightbox('${(data.image || PHOTO_BANK.halong_port).replace(/'/g, "\\'")}', '${sp.replace(/'/g, "\\'")}', 'Điểm nổi bật tại ${data.name.replace(/'/g, "\\'")}', '${(data.parentProvince || '').replace(/'/g, "\\'")}', 'Địa điểm tham quan, bến cảng và giải trí nổi tiếng tại ${data.name.replace(/'/g, "\\'")}.', 'Cả ngày & Đêm')"
+                                             onerror="handleImgError(this)">
+                                        <div>
+                                            <div class="text-xs font-extrabold text-slate-900">📍 ${sp}</div>
+                                            <div class="text-[11px] text-slate-500 mt-0.5">Thuộc địa bàn ${data.name}, ${data.parentProvince || ''}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 4. Nếu là Điểm ăn chơi / Bến cảng / Nhánh du lịch
+            else if (data.nodeType === 'tourism_hub' || data.nodeType === 'spot' || data.nodeType === 'nightlife_spot') {
+                if (data.parentProvince) {
+                    html += `
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs space-y-1">
+                            <div><span class="text-slate-500">Địa phương:</span> <strong class="text-amber-950">${data.parentProvince}</strong></div>
+                            ${data.category ? `<div><span class="text-slate-500">Phân loại:</span> <span class="font-bold text-pink-700">${data.category}</span></div>` : ''}
+                            ${data.time ? `<div><span class="text-slate-500">Khung giờ lý tưởng:</span> <span class="font-semibold text-slate-800">🕒 ${data.time}</span></div>` : ''}
+                        </div>
+                    `;
+                }
+                if (data.tourismData) {
+                    html += `
+                        <div class="space-y-3">
+                            ${data.tourismData.map(t => `
+                                <div class="rounded-xl bg-white border border-amber-200 overflow-hidden shadow-xs">
+                                    <img src="${t.image || data.image}" alt="${t.name}" class="w-full h-32 object-cover cursor-pointer"
+                                         onclick="openLightbox('${(t.image || data.image).replace(/'/g, "\\'")}', '${t.name.replace(/'/g, "\\'")}', '${t.category.replace(/'/g, "\\'")}', '${(data.parentProvince || '').replace(/'/g, "\\'")}', '${t.desc.replace(/'/g, "\\'")}', '${(t.time || 'Cả ngày').replace(/'/g, "\\'")}')"
+                                         onerror="handleImgError(this)">
+                                    <div class="p-3">
+                                        <div class="text-xs font-extrabold text-slate-900">${t.name}</div>
+                                        <div class="text-[11px] text-slate-600 mt-1">${t.desc}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            }
+
+            // 5. Nếu là Quốc gia hoặc Vùng: Hiển thị thẻ có ảnh của 8 TP Trực thuộc TW hoặc các Tỉnh trong vùng
+            else if (data.nodeType === 'country' || data.nodeType === 'region') {
+                if (data.nodeType === 'country') {
+                    const centralCities = getAllNodesFlat(root).filter(n => n.data.nodeType === 'central_city');
+                    html += `
+                        <div class="bg-gradient-to-br from-red-50 to-amber-50 border border-amber-300 rounded-2xl p-3">
+                            <h3 class="text-xs font-black uppercase tracking-wider text-red-700 mb-2 flex items-center gap-1.5">
+                                <span>👑</span> 8 Thành phố Trực thuộc Trung ương (Mới nhất)
+                            </h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                ${centralCities.map(c => `
+                                    <button onclick="focusNodeByName('${c.data.name.replace(/'/g, "\\'")}')" class="group text-left rounded-xl bg-white border border-amber-200 hover:border-red-500 overflow-hidden shadow-2xs transition-all">
+                                        <div class="h-16 w-full overflow-hidden relative">
+                                            <img src="${c.data.image}" alt="${c.data.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" onerror="handleImgError(this)">
+                                            <div class="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent"></div>
+                                            <span class="absolute bottom-1 left-1.5 right-1.5 text-[11px] font-extrabold text-white truncate">${c.data.name}</span>
+                                        </div>
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const childNodes = d.children || d._children || [];
+                html += `
+                    <div>
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-2">
+                            Danh sách trực thuộc (${childNodes.length}) - Click để mở:
+                        </h3>
+                        <div class="space-y-2">
+                            ${childNodes.map(c => `
+                                <button onclick="focusNodeByName('${c.data.name.replace(/'/g, "\\'")}')" class="w-full text-left p-2 rounded-xl bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 transition-all flex items-center gap-2.5 group">
+                                    <img src="${c.data.image || PHOTO_BANK.halong_port}" alt="${c.data.name}" class="w-12 h-12 rounded-lg object-cover shrink-0" onerror="handleImgError(this)">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-extrabold text-slate-900 group-hover:text-red-700 truncate">${c.data.name}</div>
+                                        <div class="text-[10px] text-slate-500 truncate">${c.data.subtitle || ''}</div>
+                                    </div>
+                                    <span class="text-xs text-slate-400 group-hover:text-red-600 pr-1">→</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            contentEl.innerHTML = html;
+        }
+
+        // ============================================================================
+        // 8. LIGHTBOX MODAL PHÓNG TO ẢNH
+        // ============================================================================
+        function openLightbox(imgSrc, title, badge, location, desc, timeTip) {
+            document.getElementById('lightbox-img').src = imgSrc;
+            document.getElementById('lightbox-img').alt = title;
+            document.getElementById('lightbox-title').textContent = title;
+            document.getElementById('lightbox-badge').textContent = badge || 'Điểm đến Việt Nam';
+            document.getElementById('lightbox-location').textContent = location ? `📍 ${location}` : '';
+            document.getElementById('lightbox-desc').textContent = desc || '';
+            document.getElementById('lightbox-tip').textContent = `💡 Gợi ý trải nghiệm & Giờ hoạt động: ${timeTip || 'Mở cửa đón khách cả ngày & đêm'}`;
+            document.getElementById('lightbox-modal').classList.remove('hidden');
+        }
+
+        function openLightboxFromHero() {
+            if (!currentSelectedNode) return;
+            const d = currentSelectedNode.data;
+            openLightbox(
+                d.image || PHOTO_BANK.halong_port,
+                d.name,
+                d.isCentralCity ? '👑 Thành phố Trực thuộc TW' : (d.subtitle || 'Việt Nam'),
+                d.adminCenter || '',
+                d.overview || '',
+                d.mergedFrom || 'Khám phá trực tiếp trên sơ đồ Mind Map'
+            );
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox-modal').classList.add('hidden');
+        }
+
+        function toggleInfoPanel(show) {
+            const panel = document.getElementById('info-panel');
+            const openBtn = document.getElementById('btn-open-panel');
+            if (show) {
+                panel.classList.remove('hidden');
+                openBtn.classList.add('hidden');
+            } else {
+                panel.classList.add('hidden');
+                openBtn.classList.remove('hidden');
+            }
+        }
+
+        // ============================================================================
+        // 9. CHUYỂN CHẾ ĐỘ 34 / 63, LỌC NHANH 8 TP TRUNG ƯƠNG & TÌM KIẾM
+        // ============================================================================
+        function switchMode(mode) {
+            if (currentMode === mode) return;
+            currentMode = mode;
+
+            const btn34 = document.getElementById('btn-mode-34');
+            const btn63 = document.getElementById('btn-mode-63');
+            const badge = document.getElementById('mode-badge');
+            const legendDistrict = document.getElementById('legend-district');
+            const statsSummary = document.getElementById('stats-summary');
+
+            if (mode === '34') {
+                btn34.className = "px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-slate-900 shadow-xs";
+                btn63.className = "px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-900";
+                badge.textContent = "👑 8 TP Trực thuộc TW & 26 Tỉnh (2 Cấp)";
+                legendDistrict.classList.add('hidden');
+                legendDistrict.classList.remove('inline-flex');
+                statsSummary.innerHTML = 'Đang hiển thị: <strong class="text-red-600">8 TP trực thuộc TW</strong> (Hà Nội, Hải Phòng, Quảng Ninh, Bắc Ninh, Huế, Đà Nẵng, TP.HCM, Cần Thơ) & <strong class="text-emerald-700">26 Tỉnh</strong>';
+            } else {
+                btn63.className = "px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-slate-900 shadow-xs";
+                btn34.className = "px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:text-slate-900";
+                badge.textContent = "👑 63 Tỉnh/TP (8 TP Trực thuộc TW • 3 Cấp)";
+                legendDistrict.classList.remove('hidden');
+                legendDistrict.classList.add('inline-flex');
+                statsSummary.innerHTML = 'Đang hiển thị: <strong class="text-red-600">8 TP trực thuộc TW</strong> (gồm cả TP. Bắc Ninh & TP. Quảng Ninh) & <strong class="text-emerald-700">55 Tỉnh</strong>';
+            }
+
+            initMindMap();
+        }
+
+        function toggleTourismNodes() {
+            showTourismBranches = !showTourismBranches;
+            const btn = document.getElementById('btn-toggle-tourism');
+            const text = document.getElementById('tourism-btn-text');
+            if (showTourismBranches) {
+                btn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition-all shadow-2xs";
+                text.textContent = "Nhánh Ăn Chơi & Ảnh: BẬT";
+            } else {
+                btn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-all";
+                text.textContent = "Nhánh Ăn Chơi & Ảnh: TẮT";
+            }
+            initMindMap();
+        }
+
+        function filterCentralCitiesOnly() {
+            if (!root) return;
+            // Mở các vùng có chứa 8 TP trực thuộc TW và chỉ bung nhánh của 8 TP trực thuộc TW
+            if (root._children) {
+                root.children = root._children;
+                root._children = null;
+            }
+            if (root.children) {
+                root.children.forEach(reg => {
+                    if (reg._children) {
+                        reg.children = reg._children;
+                        reg._children = null;
+                    }
+                    if (reg.children) {
+                        reg.children.forEach(prov => {
+                            if (prov.data.isCentralCity) {
+                                if (prov._children) {
+                                    prov.children = prov._children;
+                                    prov._children = null;
+                                }
+                                // Thu gọn bớt cấp cháu để sơ đồ vừa khung nhìn
+                                if (prov.children) {
+                                    prov.children.forEach(c => collapse(c));
+                                }
+                            } else {
+                                collapse(prov);
+                            }
+                        });
+                    }
+                });
+            }
+            update(root);
+            updateInfoPanel(root);
+            resetZoom(600);
+        }
+
+        function expandToProvinces() {
+            if (!root) return;
+            if (root._children) {
+                root.children = root._children;
+                root._children = null;
+            }
+            if (root.children) {
+                root.children.forEach(reg => {
+                    if (reg._children) {
+                        reg.children = reg._children;
+                        reg._children = null;
+                    }
+                    if (reg.children) {
+                        reg.children.forEach(prov => collapse(prov));
+                    }
+                });
+            }
+            update(root);
+            resetZoom(600);
+        }
+
+        function collapseToRegions() {
+            if (!root) return;
+            if (root._children) {
+                root.children = root._children;
+                root._children = null;
+            }
+            if (root.children) {
+                root.children.forEach(reg => collapse(reg));
+            }
+            update(root);
+            resetZoom(600);
+        }
+
+        function renderQuickButtons() {
+            if (!root) return;
+            const regions = root.children || root._children || [];
+            document.getElementById('region-quick-buttons').innerHTML = regions.map(r => `
+                <button onclick="focusNodeByName('${r.data.name.replace(/'/g, "\\'")}')" 
+                    class="px-2 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 hover:bg-purple-100 text-slate-700 hover:text-purple-900 transition-colors border border-slate-200">
+                    ${r.data.name.replace(/\s*\(\d+.*\)/, '')}
+                </button>
+            `).join('');
+
+            const centralCities = getAllNodesFlat(root).filter(n => n.data.nodeType === 'central_city');
+            document.getElementById('central-cities-quick-buttons').innerHTML = centralCities.map(c => `
+                <button onclick="focusNodeByName('${c.data.name.replace(/'/g, "\\'")}')" 
+                    class="px-2 py-1 rounded-lg text-[10.5px] font-extrabold bg-gradient-to-r from-red-50 to-amber-50 hover:from-red-600 hover:to-amber-600 text-red-800 hover:text-white transition-all border border-amber-300 shadow-2xs">
+                    ${c.data.name.replace('Thành phố ', 'TP. ')}
+                </button>
+            `).join('');
+        }
+
+        function focusNodeByName(targetName) {
+            let foundNode = null;
+            const cleanTarget = targetName.replace(/^[👑🌟✨📍🎉]\s*/, '').toLowerCase();
+
+            function searchRecursive(node) {
+                const cleanNodeName = node.data.name.replace(/^[👑🌟✨📍🎉]\s*/, '').toLowerCase();
+                if (node.data.name === targetName || cleanNodeName === cleanTarget) {
+                    foundNode = node;
+                    return true;
+                }
+                const children = node.children || node._children || [];
+                for (const child of children) {
+                    if (searchRecursive(child)) {
+                        if (node._children) {
+                            node.children = node._children;
+                            node._children = null;
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            searchRecursive(root);
+
+            if (foundNode) {
+                if (foundNode._children) {
+                    foundNode.children = foundNode._children;
+                    foundNode._children = null;
+                }
+                selectedNodeId = foundNode.id || (foundNode.id = ++nodeIdCounter);
+                currentPanelTab = 'all';
+                updateTabButtonsUI();
+                update(foundNode);
+                updateInfoPanel(foundNode);
+                toggleInfoPanel(true);
+                centerOnNode(foundNode, 650, 0.92);
+            }
+        }
+
+        // ============================================================================
+        // 10. Ô TÌM KIẾM THÔNG MINH CÓ ẢNH THUMBNAIL TRONG DROPDOWN
+        // ============================================================================
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        const clearSearchBtn = document.getElementById('clear-search');
+
+        function getAllNodesFlat(node, list = []) {
+            list.push(node);
+            const children = node.children || node._children || [];
+            children.forEach(c => getAllNodesFlat(c, list));
+            return list;
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            const q = e.target.value.trim().toLowerCase();
+            if (!q) {
+                searchResults.classList.add('hidden');
+                clearSearchBtn.classList.add('hidden');
+                return;
+            }
+            clearSearchBtn.classList.remove('hidden');
+
+            const allNodes = getAllNodesFlat(root);
+            const matches = allNodes.filter(n => {
+                const nameMatch = n.data.name.toLowerCase().includes(q);
+                const subMatch = (n.data.subtitle || '').toLowerCase().includes(q);
+                const mergedMatch = (n.data.mergedFrom || '').toLowerCase().includes(q);
+                const descMatch = (n.data.overview || '').toLowerCase().includes(q);
+                return nameMatch || subMatch || mergedMatch || descMatch;
+            }).slice(0, 16);
+
+            if (matches.length === 0) {
+                searchResults.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">Không tìm thấy địa điểm hoặc điểm ăn chơi phù hợp</div>`;
+            } else {
+                searchResults.innerHTML = matches.map(m => {
+                    const typeBadge = m.data.nodeType === 'central_city' ? '👑 TP TW' :
+                                      m.data.nodeType === 'province' ? 'Tỉnh' :
+                                      m.data.nodeType === 'nightlife_spot' ? '🎉 Ăn chơi' :
+                                      m.data.nodeType === 'spot' ? '⚓ Điểm đến' :
+                                      m.data.nodeType === 'commune' ? 'Phường/Xã/Đặc khu' : 'Vùng';
+                    return `
+                        <button onclick="selectSearchResult('${m.data.name.replace(/'/g, "\\'")}')" class="w-full text-left px-3 py-2 hover:bg-amber-50 transition-colors flex items-center gap-2.5">
+                            <img src="${m.data.image || PHOTO_BANK.halong_port}" alt="${m.data.name}" class="w-9 h-9 rounded-lg object-cover shrink-0 border border-slate-200" onerror="handleImgError(this)">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-xs font-bold text-slate-900 truncate">${m.data.name}</div>
+                                <div class="text-[10px] text-slate-500 truncate">${m.data.parentProvince ? m.data.parentProvince + ' • ' : ''}${m.data.subtitle || ''}</div>
+                            </div>
+                            <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">${typeBadge}</span>
+                        </button>
+                    `;
+                }).join('');
+            }
+            searchResults.classList.remove('hidden');
+        });
+
+        function selectSearchResult(nodeName) {
+            searchResults.classList.add('hidden');
+            focusNodeByName(nodeName);
+        }
+
+        function clearSearch() {
+            searchInput.value = '';
+            searchResults.classList.add('hidden');
+            clearSearchBtn.classList.add('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.classList.add('hidden');
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            width = container.clientWidth;
+            height = container.clientHeight;
+        });
+
+        window.onload = function() {
+            initMindMap();
+        };
+    </script>
+</body>
+</html>
